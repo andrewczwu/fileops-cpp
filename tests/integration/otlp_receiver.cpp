@@ -55,8 +55,7 @@ bool read_exact(int fd, std::string& out, std::size_t count) {
 
 }  // namespace
 
-OtlpReceiver::OtlpReceiver() {
-    listener_ = ::socket(AF_INET, SOCK_STREAM, 0);
+OtlpReceiver::OtlpReceiver() : listener_(::socket(AF_INET, SOCK_STREAM, 0)) {
     if (listener_ < 0) {
         fail("socket");
     }

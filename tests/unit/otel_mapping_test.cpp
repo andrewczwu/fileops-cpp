@@ -33,6 +33,18 @@ namespace memory = opentelemetry::exporter::memory;
 namespace nostd = opentelemetry::nostd;
 
 class OtelMappingTest : public ::testing::Test {
+public:
+    OtelMappingTest(const OtelMappingTest&) = delete;
+    OtelMappingTest& operator=(const OtelMappingTest&) = delete;
+    OtelMappingTest(OtelMappingTest&&) = delete;
+    OtelMappingTest& operator=(OtelMappingTest&&) = delete;
+
+    ~OtelMappingTest() override {
+        observer_.reset();
+        meters_->Shutdown();
+        tracers_->Shutdown();
+    }
+
 protected:
     OtelMappingTest() {
         spans_ = std::make_shared<memory::InMemorySpanData>(100);
@@ -52,12 +64,6 @@ protected:
             nostd::shared_ptr<opentelemetry::metrics::MeterProvider>(
                 std::shared_ptr<opentelemetry::metrics::MeterProvider>(meters_.get(), [](auto*) {})),
             "1.2.3");
-    }
-
-    ~OtelMappingTest() override {
-        observer_.reset();
-        meters_->Shutdown();
-        tracers_->Shutdown();
     }
 
     void flush_metrics() { meters_->ForceFlush(); }

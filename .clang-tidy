@@ -21,6 +21,7 @@ Checks: >
   -cppcoreguidelines-pro-bounds-pointer-arithmetic,
   -misc-include-cleaner,
   -misc-non-private-member-variables-in-classes,
+  -cppcoreguidelines-non-private-member-variables-in-classes,
   -bugprone-easily-swappable-parameters,
   -cert-err58-cpp,
   -performance-enum-size,
@@ -30,7 +31,8 @@ Checks: >
 # readability-identifier-length / magic-numbers: POSIX code legitimately uses fd, rc, 0755.
 # pro-type-vararg / bounds: unavoidable at the POSIX call boundary (open, write, read).
 # misc-include-cleaner: clang-tidy's header model disagrees with the standard library's.
-# non-private-member-variables: plain structs are data.
+# non-private-member-variables (both aliases): plain structs are data, and GoogleTest fixtures
+#   expose their members to the test bodies, which are derived classes.
 # easily-swappable-parameters: (source, destination) pairs are the domain.
 # cert-err58-cpp: static test fixtures in GoogleTest.
 # performance-enum-size: the enums are part of the API and exit codes are ints by definition.

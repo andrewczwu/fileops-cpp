@@ -4,6 +4,7 @@
 
 #include "fileops/exit_code.hpp"
 
+#include <algorithm>
 #include <string>
 
 #include <gtest/gtest.h>
@@ -32,12 +33,8 @@ protected:
 };
 
 bool contains(const std::vector<ReceivedRequest>& requests, const std::string& needle) {
-    for (const auto& r : requests) {
-        if (r.body.find(needle) != std::string::npos) {
-            return true;
-        }
-    }
-    return false;
+    return std::ranges::any_of(
+        requests, [&](const ReceivedRequest& r) { return r.body.find(needle) != std::string::npos; });
 }
 
 TEST_F(OtlpExportTest, ExportsASpanMetricsAndLogRecordsForOneRun) {
