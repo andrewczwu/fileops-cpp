@@ -15,5 +15,5 @@ CMakeUserPresets.json
 .cache/
 compile_commands.json
 
-# Conan home when CI keeps it inside the workspace
+# Conan home when CI keeps it inside the workspace (CONAN_HOME in the workflows)
 .conan2/

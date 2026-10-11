@@ -19,9 +19,10 @@ vice versa) a routine failure, and make the pipeline impossible to exercise with
   `make <target>` or the script directly. The YAML holds orchestration (job graph, caching, artefacts,
   summaries) only.
 - Container jobs run as `--user 1001:1001` with `HOME=/home/builder`, and keep Conan's home inside
-  the workspace (`scripts/ci/conan-cache-path.sh`) so `actions/cache` can save and restore it.
-- The workflows are runnable offline with `act` (`.actrc`, `make act-<job>`); steps that need GitHub
-  services are guarded and skipped locally.
+  the workspace (`CONAN_HOME` in each job's `env`) so `actions/cache` can save and restore it.
+- The workflows are runnable locally with `act` (`.actrc`, `make act-<job>`); steps that need GitHub
+  services are guarded and skipped locally. Not offline: act cannot mount a package cache into a job
+  that declares its own container `options`, so container jobs resolve dependencies from the network.
 - Third-party actions are pinned to commit SHAs; Dependabot keeps them current. Jobs declare
   least-privilege `permissions` and `timeout-minutes` per job, and `concurrency` per workflow.
 

@@ -66,7 +66,7 @@ ifeq ($(origin PRESET),command line)
 DOCKER_PRESET := PRESET=$(PRESET)
 endif
 
-.PHONY: help setup deps lock configure build test lint format format-check tidy package release-assets smoke lint-deb clean build-image docker-% act-% ci
+.PHONY: help setup deps lock configure build test lint format format-check tidy package release-assets smoke lint-deb clean build-image ci FORCE
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_%-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
@@ -131,7 +131,8 @@ clean: ## Remove build output and artefacts
 build-image: ## Build the pinned toolchain image used by CI and docker-* targets
 	docker build --platform $(DOCKER_PLATFORM) -t $(BUILD_IMAGE) -f docker/Dockerfile.build docker
 
-docker-%: ## Run any target inside the build container, e.g. make docker-test, make docker-package
+# Pattern rules cannot be declared .PHONY, so they depend on FORCE to always run.
+docker-%: FORCE ## Run any target inside the build container, e.g. make docker-test, make docker-package
 	mkdir -p "$(CONAN_CACHE)"
 	$(DOCKER_RUN) make $* VERSION=$(VERSION) $(DOCKER_PRESET)
 
@@ -139,7 +140,9 @@ docker-%: ## Run any target inside the build container, e.g. make docker-test, m
 # every workflow has a job called `build`. Container jobs resolve dependencies from the network:
 # act cannot add a cache mount to a job that declares its own container `options`.
 ACT_ARGS ?=
-act-%: ## Run a ci.yml job locally with act, e.g. make act-test, make act-build, make act-smoke
+act-%: FORCE ## Run a ci.yml job locally with act, e.g. make act-test, make act-build, make act-smoke
 	act -W .github/workflows/ci.yml -j $* $(ACT_ARGS)
+
+FORCE:
 
 ci: lint tidy test package lint-deb smoke ## Everything the pipeline runs, in order

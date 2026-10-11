@@ -115,13 +115,14 @@ jobs:
       options: --user 1001:1001
     env:
       HOME: /home/builder
+      # Conan's home inside the workspace so actions/cache can save and restore it whatever user or
+      # HOME the container runs with. Under act this path is resolved from the network each run.
+      CONAN_HOME: ${{ github.workspace }}/.conan2
       PRESET: ${{ matrix.preset }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
-      - name: Locate Conan cache
-        run: scripts/ci/conan-cache-path.sh >> "$GITHUB_ENV"
       - name: Cache Conan packages
         if: ${{ !env.ACT }}
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
@@ -168,12 +169,13 @@ jobs:
       options: --user 1001:1001
     env:
       HOME: /home/builder
+      # Conan's home inside the workspace so actions/cache can save and restore it whatever user or
+      # HOME the container runs with. Under act this path is resolved from the network each run.
+      CONAN_HOME: ${{ github.workspace }}/.conan2
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
-      - name: Locate Conan cache
-        run: scripts/ci/conan-cache-path.sh >> "$GITHUB_ENV"
       - name: Cache Conan packages
         if: ${{ !env.ACT }}
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
@@ -207,7 +209,7 @@ jobs:
             artifacts/logs
           retention-days: 14
       - name: Upload package
-        if: ${{ !env.ACT }}
+        # Not guarded for act: the smoke job downloads it, and .actrc points act at a local artifact server.
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: fileops-cpp-deb
