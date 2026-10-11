@@ -57,10 +57,17 @@ TEST_F(OtlpExportTest, ExportsASpanMetricsAndLogRecordsForOneRun) {
         EXPECT_FALSE(r.body.empty()) << r.path;
     }
     EXPECT_TRUE(contains(traces, "fileops.copy"));
-    EXPECT_TRUE(contains(traces, "service.name"));
+    EXPECT_TRUE(contains(traces, "file.size"));
+    for (const auto* signal : {&traces, &metrics, &logs}) {
+        EXPECT_TRUE(std::ranges::any_of(*signal, [](const ReceivedRequest& r) {
+            const auto has = [&](const char* text) { return r.body.find(text) != std::string::npos; };
+            return has("service.name") && has("fileops") && has("service.version");
+        })) << "every signal carries the resource attributes";
+    }
     EXPECT_TRUE(contains(metrics, "fileops.operations"));
     EXPECT_TRUE(contains(metrics, "fileops.operation.duration"));
     EXPECT_TRUE(contains(metrics, "fileops.bytes"));
+    EXPECT_TRUE(contains(metrics, "success"));
     // Information and above by default: the FileCopied record goes out, the Debug "Starting" one does not.
     EXPECT_TRUE(contains(logs, "Copied a to b"));
     EXPECT_FALSE(contains(logs, "Starting Copy"));
@@ -74,6 +81,7 @@ TEST_F(OtlpExportTest, LogLevelGovernsTheExportToo) {
 
     EXPECT_EQ(quiet.exit_code, 0);
     EXPECT_FALSE(OtlpReceiver::with_path(received, "/v1/traces").empty()) << "spans are not logs";
+    EXPECT_FALSE(OtlpReceiver::with_path(received, "/v1/metrics").empty()) << "metrics are not logs";
     EXPECT_TRUE(OtlpReceiver::with_path(received, "/v1/logs").empty())
         << "--log-level None silences every sink";
 }
@@ -89,6 +97,7 @@ TEST_F(OtlpExportTest, FailureIsExportedAsAnErrorSpanAndTheSummaryLineComesLast)
     EXPECT_TRUE(contains(traces, "fileops.delete"));
     EXPECT_TRUE(contains(traces, "file not found"));
     EXPECT_TRUE(contains(traces, "fileops::Error"));
+    EXPECT_TRUE(contains(OtlpReceiver::with_path(received, "/v1/metrics"), "notfound"));
     const auto lines = result.stderr_lines();
     ASSERT_FALSE(lines.empty());
     EXPECT_TRUE(lines.back().starts_with("fileops: file not found"));
