@@ -18,7 +18,6 @@ set(_pkg_src "${PROJECT_SOURCE_DIR}/packaging")
 set(_pkg_out "${CMAKE_BINARY_DIR}/packaging")
 file(MAKE_DIRECTORY "${_pkg_out}")
 
-string(REPLACE "-" "~" _deb_version "${FILEOPS_VERSION}")
 string(TIMESTAMP _changelog_date "%a, %d %b %Y %H:%M:%S +0000" UTC)
 configure_file("${_pkg_src}/changelog.in" "${_pkg_out}/changelog" @ONLY)
 

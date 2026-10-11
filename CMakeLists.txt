@@ -9,6 +9,9 @@ if(NOT FILEOPS_VERSION MATCHES "^[0-9]+\\.[0-9]+\\.[0-9]+(-[0-9A-Za-z.-]+)?$")
   message(FATAL_ERROR "FILEOPS_VERSION must be SemVer (MAJOR.MINOR.PATCH[-pre]), got '${FILEOPS_VERSION}'")
 endif()
 string(REGEX MATCH "^[0-9]+\\.[0-9]+\\.[0-9]+" FILEOPS_NUMERIC_VERSION "${FILEOPS_VERSION}")
+# Debian versions use `~` for pre-releases so 1.2.0~rc.1 sorts before 1.2.0. Used by the package
+# control file (cmake/Packaging.cmake) and the Debian changelog (src/cli/CMakeLists.txt).
+string(REPLACE "-" "~" FILEOPS_DEB_VERSION "${FILEOPS_VERSION}")
 
 project(fileops
   VERSION ${FILEOPS_NUMERIC_VERSION}

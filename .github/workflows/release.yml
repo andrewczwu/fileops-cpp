@@ -63,9 +63,8 @@ jobs:
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
-          make package
+          make release-assets # implies package: gcc-release build, tests, .deb, tarball, SHA256SUMS
           make lint-deb
-          make release-assets
       - name: Artefact summary
         run: scripts/ci/artifact-summary.sh >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7

@@ -1,4 +1,4 @@
-fileops-cpp (@_deb_version@) stable; urgency=medium
+fileops-cpp (@FILEOPS_DEB_VERSION@) stable; urgency=medium
 
   * See https://github.com/andrewczwu/fileops-cpp/blob/main/CHANGELOG.md
 

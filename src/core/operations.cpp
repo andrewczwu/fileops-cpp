@@ -201,10 +201,14 @@ Result FileOperations::combine(const std::filesystem::path& first,
 Result FileOperations::remove(const std::filesystem::path& path, bool ignore_missing) {
     return execute(Operation::Delete, path, [&] {
         require_path(path, "path");
-        reject_directory(path);
+        // The link itself is what gets removed, so look at it rather than through it: a symlink to a
+        // directory is deletable, and a dangling symlink exists.
+        if (std::filesystem::is_directory(std::filesystem::symlink_status(path))) {
+            throw Error(ExitCode::UsageError, std::format("is a directory: {}", path.string()), path);
+        }
 
         struct stat st {};
-        if (::stat(path.c_str(), &st) != 0) {
+        if (::lstat(path.c_str(), &st) != 0) {
             if (errno != ENOENT) {
                 throw_errno(errno, path);
             }

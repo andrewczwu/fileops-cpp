@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # clang-format over every tracked C++ file, with the same major version everywhere.
 #
-#   scripts/format.sh --check   fail (with a diff) if any file is not formatted; what CI runs
-#   scripts/format.sh --fix     rewrite files in place
+#   scripts/format.sh --check          fail (with a diff) if any file is not formatted; what CI runs
+#   scripts/format.sh --check-staged   the same for the staged content of staged files (pre-commit hook)
+#   scripts/format.sh --fix            rewrite files in place
 #
 # clang-format output differs between major versions, so only the pinned major is accepted:
 # clang-format-18 on PATH, Homebrew's llvm@18, an unversioned clang-format that reports 18, or
@@ -15,9 +16,9 @@ LLVM_MAJOR=18
 BUILD_IMAGE="${BUILD_IMAGE:-ghcr.io/andrewczwu/fileops-cpp-build:main}"
 mode="${1:-}"
 case "${mode}" in
-  --check | --fix) ;;
+  --check | --check-staged | --fix) ;;
   *)
-    echo "usage: scripts/format.sh --check|--fix" >&2
+    echo "usage: scripts/format.sh --check|--check-staged|--fix" >&2
     exit 2
     ;;
 esac
@@ -26,7 +27,11 @@ esac
 files=()
 while IFS= read -r -d '' f; do
   files+=("${f}")
-done < <(git ls-files -z -- '*.cpp' '*.hpp')
+done < <(if [[ "${mode}" == "--check-staged" ]]; then
+  git diff --cached --name-only -z --diff-filter=ACM -- '*.cpp' '*.hpp'
+else
+  git ls-files -z -- '*.cpp' '*.hpp'
+fi)
 
 reports_major() { "$1" --version 2>/dev/null | grep -qE "clang-format version ${LLVM_MAJOR}\."; }
 
@@ -44,7 +49,7 @@ run_clang_format() {
     "${clang_format}" "$@"
   else
     echo "clang-format ${LLVM_MAJOR} not found locally; using ${BUILD_IMAGE}" >&2
-    docker run --rm --platform "${DOCKER_PLATFORM:-linux/amd64}" -v "${PWD}:/src" -w /src \
+    docker run --rm -i --platform "${DOCKER_PLATFORM:-linux/amd64}" -v "${PWD}:/src" -w /src \
       "${BUILD_IMAGE}" clang-format "$@"
   fi
 }
@@ -55,6 +60,14 @@ if [[ "${mode}" == "--fix" ]]; then
     shfmt -w scripts .githooks
   fi
   echo "formatted ${#files[@]} C++ files"
+elif [[ "${mode}" == "--check-staged" ]]; then
+  # Check the blobs in the index, not the working tree, so the hook judges what is being committed.
+  status=0
+  for f in "${files[@]}"; do
+    git show ":${f}" | run_clang_format --dry-run -Werror --assume-filename="${f}" - || status=1
+  done
+  [[ "${status}" -eq 0 ]] && echo "clang-format: ${#files[@]} staged files clean"
+  exit "${status}"
 else
   # --dry-run prints a diff-like report of every violation; -Werror turns it into a failure.
   run_clang_format --dry-run -Werror "${files[@]}"

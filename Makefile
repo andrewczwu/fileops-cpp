@@ -59,7 +59,7 @@ DOCKER_RUN = docker run --rm --platform $(DOCKER_PLATFORM) \
 	--user 1001:1001 -e HOME=/home/builder -e CONAN_HOME=/home/builder/.conan2 \
 	-v "$(CURDIR)":/src -w /src \
 	-v "$(CONAN_CACHE)":/home/builder/.conan2 \
-	-e VERSION=$(VERSION) -e CI=$${CI:-} \
+	-e VERSION=$(VERSION) -e CI=$${CI:-} -e SOURCE_DATE_EPOCH=$${SOURCE_DATE_EPOCH:-} \
 	$(BUILD_IMAGE)
 # Only forward PRESET into the container when it was given explicitly; the container picks its own default.
 ifeq ($(origin PRESET),command line)
@@ -96,7 +96,7 @@ build: configure ## Compile the preset
 
 test: build ## Unit + integration tests; JUnit report and CLI telemetry under artifacts/
 	mkdir -p $(ARTIFACTS)/test-results
-	FILEOPS_TEST_LOG_DIR=$(ARTIFACTS)/logs/$(PRESET) \
+	FILEOPS_TEST_LOG_DIR=$(CURDIR)/$(ARTIFACTS)/logs/$(PRESET) \
 		ctest --preset $(PRESET) --output-junit $(CURDIR)/$(ARTIFACTS)/test-results/$(PRESET).xml
 
 lint: format-check ## clang-format, shell, Dockerfile, YAML, Markdown, editorconfig, workflows, commit messages, secrets

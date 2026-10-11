@@ -57,6 +57,27 @@ TEST_F(DeleteTest, RefusesToDeleteADirectory) {
     EXPECT_TRUE(std::filesystem::exists(dir_.path()));
 }
 
+TEST_F(DeleteTest, DeletesADanglingSymlink) {
+    const auto link = dir_.file("dead");
+    std::filesystem::create_symlink(dir_.file("never-existed"), link);
+
+    ops_.sut.remove(link);
+
+    EXPECT_FALSE(std::filesystem::exists(std::filesystem::symlink_status(link)));
+    EXPECT_TRUE(ops_.logger.has(events::file_deleted));
+}
+
+TEST_F(DeleteTest, DeletesASymlinkToADirectoryButNotTheDirectory) {
+    std::filesystem::create_directory(dir_.file("sub"));
+    const auto link = dir_.file("sub-link");
+    std::filesystem::create_directory_symlink(dir_.file("sub"), link);
+
+    ops_.sut.remove(link);
+
+    EXPECT_FALSE(std::filesystem::exists(std::filesystem::symlink_status(link)));
+    EXPECT_TRUE(std::filesystem::is_directory(dir_.file("sub")));
+}
+
 TEST_F(DeleteTest, EmptyPathIsAUsageError) {
     try {
         ops_.sut.remove("");

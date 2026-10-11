@@ -126,6 +126,22 @@ void place_without_replacing(const std::filesystem::path& temp, const std::files
     }
 }
 
+// The data was fsync'd through the descriptor; the new name lives in the directory, which has its
+// own metadata to flush before the file can be called durable.
+void sync_directory(const std::filesystem::path& directory, const std::filesystem::path& destination) {
+    const int fd = ::open(directory.c_str(), O_RDONLY | O_DIRECTORY | O_CLOEXEC);
+    if (fd < 0) {
+        throw_errno(errno, destination, "open directory");
+    }
+    const int rc = ::fsync(fd);
+    const int err = errno;
+    ::close(fd);
+    // EINVAL: the file system does not support fsync on directories (some network and FUSE mounts).
+    if (rc != 0 && err != EINVAL) {
+        throw_errno(err, destination, "flush directory");
+    }
+}
+
 }  // namespace
 
 void write_all(int fd, const void* data, std::size_t size) {
@@ -198,6 +214,7 @@ std::uint64_t write(const std::filesystem::path& destination,
         place_without_replacing(temp.path(), full);
     }
     temp.committed();
+    sync_directory(directory, destination);
     return static_cast<std::uint64_t>(written.st_size);
 }
 

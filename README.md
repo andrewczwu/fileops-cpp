@@ -154,11 +154,11 @@ Three layers, all run by CI; `make test` runs the first two, `make smoke` the th
 
 | Layer | What runs | What it proves |
 | --- | --- | --- |
-| Unit (`tests/unit`, 47 tests) | `fileops::core` in-process with a `CollectingLogger` capturing every record | each operation's file-system behaviour, atomicity, error-to-exit-code mapping, **and** that the right log events with the right fields were emitted |
+| Unit (`tests/unit`, 49 tests) | `fileops::core` in-process with a `CollectingLogger` capturing every record | each operation's file-system behaviour, atomicity, error-to-exit-code mapping, **and** that the right log events with the right fields were emitted |
 | Integration (`tests/integration`, 37 tests) | the real `fileops` executable as a child process, with JSON logging on | argument parsing, exit codes, stdout/stderr discipline, log schema, and that logged facts (bytes, exit code, reason) match what actually happened |
 | Package smoke (`scripts/smoke-test.sh`) | the installed `.deb` in pristine `debian:bookworm-slim` (12), `debian:trixie-slim` (13), `ubuntu:22.04`, `ubuntu:24.04` containers (CI; `make smoke` defaults to bookworm and 24.04, override with `SMOKE_IMAGES`) | it installs, runs, honours exit codes, logs, ships a man page, and removes cleanly |
 
-The 84 tests run under both compilers with sanitizers, and again in the release configuration
+The 86 tests run under both compilers with sanitizers, and again in the release configuration
 whose binary goes into the package — so the artefact that ships is the artefact that was tested.
 Every CLI invocation's log stream is captured to `cli-runs.ndjson`, summarised into the job summary,
 and uploaded; a red build can be diagnosed from that file without a re-run. The `diagnose` job in
@@ -232,7 +232,7 @@ Choices made on purpose for a single-maintainer tool with one requested target:
   on every supported distribution without a second libc toolchain;
 - no merge queue, reusable workflows, SLSA Build L3 builder or SBOM — each adds machinery without a
   consumer here; provenance attestations give Build L2 today;
-- no coverage gate, mutation testing or fuzzing — 84 deterministic tests under two sanitized
+- no coverage gate, mutation testing or fuzzing — 86 deterministic tests under two sanitized
   compilers on a tool that parses only its own arguments;
 - no OpenTelemetry export yet — logs first; traces and metrics are phase 2.
 

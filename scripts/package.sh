@@ -30,6 +30,8 @@ rm -rf "${OUT}" && mkdir -p "${OUT}"
 # file name keeps the SemVer form: GitHub release assets cannot contain `~` and would be renamed,
 # breaking the match with SHA256SUMS. Both are set in cmake/Packaging.cmake from FILEOPS_VERSION.
 cpack --preset "${PRESET}"
+# CPack's unpacked staging tree would otherwise travel with the artefact; only the .deb ships.
+rm -rf "${OUT}/_CPack_Packages"
 
 (
   cd "${OUT}"
