@@ -70,7 +70,7 @@ identical versions. clang-format output differs between major versions, which is
 
 ```sh
 docker pull ghcr.io/andrewczwu/fileops-cpp-build:main   # once (or: make build-image BUILD_IMAGE=ghcr.io/andrewczwu/fileops-cpp-build:main)
-make act-test ACT_ARGS='--matrix preset:gcc-debug'       # the CI "Test (gcc-debug)" job, offline
+make act-test ACT_ARGS='--matrix preset:gcc-debug'       # the CI "Test (gcc-debug)" job (needs network)
 make act-build                                           # the CI "Build, test & package (gcc-release)" job
 make act-smoke ACT_ARGS='--matrix image:debian:bookworm-slim'
 ```
@@ -79,7 +79,7 @@ make act-smoke ACT_ARGS='--matrix image:debian:bookworm-slim'
 `act -j build` would run three of them). The container jobs resolve Conan dependencies from the
 network, so this needs connectivity; `make test` and `make docker-test` work offline once the Conan
 cache is warm (`make docker-*` mounts `~/.cache/fileops-cpp/conan2` into the container for that).
-`.actrc` holds the remaining defaults. Steps that depend on GitHub-hosted services (artifact upload,
+`.actrc` holds the remaining defaults. Steps that depend on GitHub-hosted services (caching, test reports,
 OIDC, code scanning) are skipped under `act` and marked as such in the workflow.
 
 ## Updating dependencies

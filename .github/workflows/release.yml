@@ -34,6 +34,9 @@ jobs:
       options: --user 1001:1001
     env:
       HOME: /home/builder
+      # Conan's home inside the workspace so actions/cache can save and restore it whatever user or
+      # HOME the container runs with. Under act this path is resolved from the network each run.
+      CONAN_HOME: ${{ github.workspace }}/.conan2
     outputs:
       version: ${{ steps.version.outputs.version }}
       prerelease: ${{ steps.version.outputs.prerelease }}
@@ -50,8 +53,6 @@ jobs:
         # Packaging embeds dates (Debian changelog, tarball mtimes); taking them from the commit is
         # meant to make two builds of the same tag identical (not yet verified by a double build).
         run: echo "SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)" >> "$GITHUB_ENV"
-      - name: Locate Conan cache
-        run: scripts/ci/conan-cache-path.sh >> "$GITHUB_ENV"
       # Deliberately no package cache here: release builds resolve dependencies from the locked graph
       # from scratch, so a poisoned cache entry from a pull request can never reach a published artefact.
       - name: Sanitizer tests (gcc-debug)

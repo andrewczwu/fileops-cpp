@@ -88,7 +88,7 @@ docker/Dockerfile.build ─► ghcr.io/andrewczwu/fileops-cpp-build   (weekly + 
 
 Every multi-step CI task is a script under `scripts/`, usually invoked through the `Makefile`, so
 `make test`, `make package`, `make smoke` locally are the same commands the pipeline runs, and
-`act` can execute the workflows offline against the same toolchain image.
+`act` can execute the workflows locally against the same toolchain image.
 
 ### Pipeline shape
 
