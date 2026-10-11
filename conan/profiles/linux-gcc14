@@ -1,0 +1,21 @@
+# Release toolchain for the shipped binary: GCC 14 on Ubuntu 24.04 (the toolchain image).
+[settings]
+os=Linux
+arch=x86_64
+compiler=gcc
+compiler.version=14
+compiler.libcxx=libstdc++11
+compiler.cppstd=20
+build_type=Release
+
+[conf]
+tools.build:compiler_executables={"c": "gcc-14", "cpp": "g++-14"}
+tools.cmake.cmaketoolchain:generator=Ninja
+# The committed CMakePresets.json is the source of truth; Conan must not write CMakeUserPresets.json
+# (one per build directory would collide on the preset names it generates).
+tools.cmake.cmaketoolchain:user_presets=False
+
+# CMake comes from the platform (Homebrew / apt in the toolchain image), so Conan must not download
+# its own copy to build test dependencies such as gtest.
+[platform_tool_requires]
+cmake/3.28.3

@@ -1,0 +1,14 @@
+{
+    "version": "0.5",
+    "requires": [
+        "nlohmann_json/3.12.0#2d634ab0ec8d9f56353e5ccef6d6612c%1744735883.94",
+        "gtest/1.18.0#e2507fc4efe2ec9e2db9e5c91eefab9f%1786446847.733",
+        "cli11/2.7.2#704b6fc8383dbb05a6cf698c01ed74a2%1790863513.388"
+    ],
+    "build_requires": [
+        "cmake/4.4.4#platform",
+        "cmake/3.28.3#platform"
+    ],
+    "python_requires": [],
+    "config_requires": []
+}

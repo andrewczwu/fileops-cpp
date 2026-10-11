@@ -1,0 +1,19 @@
+# Build output: every preset builds under build/<preset>; packages and release assets under artifacts/.
+build/
+artifacts/
+
+# Conan generates this per machine; the committed CMakePresets.json is the source of truth.
+CMakeUserPresets.json
+
+# Editors and OS noise
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Tooling caches
+.cache/
+compile_commands.json
+
+# Conan home when CI keeps it inside the workspace
+.conan2/

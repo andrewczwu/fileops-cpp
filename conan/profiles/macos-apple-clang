@@ -1,0 +1,20 @@
+# Developer loop on macOS (Apple Silicon). Tests run here; Linux artefacts come from the container.
+[settings]
+os=Macos
+arch=armv8
+compiler=apple-clang
+compiler.version=21
+compiler.libcxx=libc++
+compiler.cppstd=20
+build_type=Release
+
+[conf]
+tools.cmake.cmaketoolchain:generator=Ninja
+# The committed CMakePresets.json is the source of truth; Conan must not write CMakeUserPresets.json
+# (one per build directory would collide on the preset names it generates).
+tools.cmake.cmaketoolchain:user_presets=False
+
+# CMake comes from the platform (Homebrew / apt in the toolchain image), so Conan must not download
+# its own copy to build test dependencies such as gtest.
+[platform_tool_requires]
+cmake/4.4.4
