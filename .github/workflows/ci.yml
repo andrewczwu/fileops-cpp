@@ -128,7 +128,13 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: ${{ env.CONAN_HOME }}/p
-          key: conan-${{ matrix.preset }}-${{ hashFiles('conan.lock', 'conan/profiles/*', 'conanfile.py') }}
+          # v2: the deps target trims the cache after install, so entries saved under the v1 key are
+          # several times larger. restore-keys lets a run start from the newest previous cache (same
+          # preset) and rebuild only what the lockfile changed; it saves under the exact key afterwards.
+          key: conan-v2-${{ matrix.preset }}-${{ hashFiles('conan.lock', 'conan/profiles/*', 'conanfile.py') }}
+          restore-keys: |
+            conan-v2-${{ matrix.preset }}-
+            conan-${{ matrix.preset }}-
       - name: Build and test (ASan + UBSan)
         run: make test
       - name: clang-tidy
@@ -181,7 +187,10 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: ${{ env.CONAN_HOME }}/p
-          key: conan-gcc-release-${{ hashFiles('conan.lock', 'conan/profiles/*', 'conanfile.py') }}
+          key: conan-v2-gcc-release-${{ hashFiles('conan.lock', 'conan/profiles/*', 'conanfile.py') }}
+          restore-keys: |
+            conan-v2-gcc-release-
+            conan-gcc-release-
       - name: Build, test and package
         run: make package
       - name: lintian

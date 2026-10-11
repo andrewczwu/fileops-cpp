@@ -82,6 +82,11 @@ deps: ## Resolve dependencies with Conan into build/$(PRESET) (locked graph, bui
 	conan install . --output-folder $(BUILD_DIR) --build=missing --lockfile conan.lock \
 		--profile:host conan/profiles/$(PROFILE) --profile:build conan/profiles/$(PROFILE) \
 		--settings build_type=$(BUILD_TYPE)
+	# Keep only the installed packages: the source, build and download folders Conan leaves behind
+	# are several times their size (a Debug cache of this graph was 1.1 GB before, ~200 MB after),
+	# and packages unused for a month are evicted so a dependency bump does not grow the cache forever.
+	conan cache clean "*" --source --build --download
+	conan remove "*" --lru=4w --confirm
 
 lock: ## Add the current preset's profile to conan.lock (run for every profile after changing conanfile.py)
 	conan lock create . $(if $(wildcard conan.lock),--lockfile conan.lock,) --lockfile-out conan.lock \
