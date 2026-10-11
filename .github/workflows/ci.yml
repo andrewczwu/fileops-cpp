@@ -101,7 +101,7 @@ jobs:
     # clang leg also runs clang-tidy, which needs the compile database this configure produces.
     name: Test (${{ matrix.preset }})
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 45 # a cold Conan cache compiles protobuf, OpenSSL, libcurl and opentelemetry-cpp
     strategy:
       fail-fast: false
       matrix:
@@ -160,7 +160,7 @@ jobs:
     # proves the release binary, then CPack builds the .deb and lintian checks it, all in one job.
     name: Build, test & package (gcc-release)
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 45 # a cold Conan cache compiles protobuf, OpenSSL, libcurl and opentelemetry-cpp
     container:
       image: ghcr.io/andrewczwu/fileops-cpp-build:main
       credentials:

@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <ostream>
+#include <vector>
 
 namespace fileops::cli {
 
@@ -16,5 +17,9 @@ enum class LogFormat { Text, Json };
 std::unique_ptr<telemetry::Logger> make_sink(LogFormat format,
                                              telemetry::LogLevel minimum,
                                              std::ostream& out);
+
+/// A logger that forwards every record to each of the given sinks; a record is produced when any
+/// sink wants it. Used to feed the console and the OTLP export at different levels.
+std::unique_ptr<telemetry::Logger> make_tee(std::vector<std::unique_ptr<telemetry::Logger>> sinks);
 
 }  // namespace fileops::cli

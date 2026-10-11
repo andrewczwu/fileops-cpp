@@ -142,6 +142,15 @@ Default for
 .B FILEOPS_LOG_FORMAT
 Default for
 .BR \-\-log\-format .
+.TP
+.B OTEL_EXPORTER_OTLP_ENDPOINT
+When set, one span and three metrics per operation are exported over
+OTLP/HTTP to this endpoint, together with log records: at Information and
+above by default (the console stays silent), or at the level given by
+.BR \-\-log\-level ,
+which governs every log sink. Standard
+.B OTEL_*
+variables are honoured.
 .SH EXAMPLES
 .nf
 fileops create notes.txt \-\-text "hello"

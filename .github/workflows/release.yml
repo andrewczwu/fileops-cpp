@@ -24,7 +24,7 @@ jobs:
   build:
     name: Build release artefacts
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60 # no dependency cache on purpose; the whole graph is compiled
     container:
       # Releases build in an exact, immutable toolchain image (digest from the build-image job summary).
       image: ghcr.io/andrewczwu/fileops-cpp-build:main@sha256:98d686b03e89120cd24618496f8d3b025b64fb35b6b9c0278187fd92824a3c1b

@@ -38,4 +38,6 @@ logging". Both are expensive in a pipeline whose job is developer velocity.
   C# tool's consumers) and must be deliberate.
 - Logging must never touch stdout; both sinks are constructed over `std::cerr` and the integration
   tests check stdout is empty on every path.
-- Without spans there is no trace/span id to correlate records; phase 2 adds that.
+- Spans and metrics follow the same pattern: the core reports facts through `telemetry::Observer`,
+  the CLI maps them to OpenTelemetry, and tests assert on both the facts (`CollectingObserver`) and
+  the mapping (in-memory exporters). Exported log records carry the active span's ids.

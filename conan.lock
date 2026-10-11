@@ -1,14 +1,38 @@
 {
     "version": "0.5",
     "requires": [
+        "zlib/1.3.2#1cb806da49011867778ffb6ac7190fcb%1777558780.503",
+        "protobuf/6.33.5#ca5ff466767b31a1b496ec60247e105c%1785159690.783",
+        "opentelemetry-cpp/1.26.0#000b96632e39f3672f8576bf4febb213%1789030194.301",
+        "openssl/3.6.5#3c1311f37543e7140f33fe5989f315c2%1790692982.113",
         "nlohmann_json/3.12.0#2d634ab0ec8d9f56353e5ccef6d6612c%1744735883.94",
+        "libcurl/8.22.0#3599f8564660d38f96af52da40795734%1789660092.861",
         "gtest/1.18.0#e2507fc4efe2ec9e2db9e5c91eefab9f%1786446847.733",
-        "cli11/2.7.2#704b6fc8383dbb05a6cf698c01ed74a2%1790863513.388"
+        "cli11/2.7.2#704b6fc8383dbb05a6cf698c01ed74a2%1790863513.388",
+        "c-ares/1.34.8#074b97a9e38159813ed5e2dcfeb290ca%1784539118.141",
+        "abseil/20260107.1#883e95a7be2b767999f64669ac642e5d%1773137897.755"
     ],
     "build_requires": [
+        "zlib/1.3.2#1cb806da49011867778ffb6ac7190fcb%1777558780.503",
+        "protobuf/6.33.5#ca5ff466767b31a1b496ec60247e105c%1785159690.783",
+        "pkgconf/2.5.1#93c2051284cba1279494a43a4fcfeae2%1757684701.089",
+        "opentelemetry-proto/1.7.0#ed6d5bd761bef0afb0ba09676420b9ea%1749461220.268",
+        "ninja/1.13.2#c8c5dc2a52ed6e4e42a66d75b4717ceb%1764096931.974",
+        "meson/1.10.2#9d2d10681fe7fe61c788c58626c89b25%1775558003.754",
+        "m4/1.4.19#1727f439cf74e83826ec96d0b4904eee%1784541921.659",
+        "libtool/2.4.7#14e7739cc128bc1623d2ed318008e47e%1755679003.847",
+        "gnu-config/cci.20210814#466e9d4d7779e1c142443f7ea44b4284%1762363589.329",
         "cmake/4.4.4#platform",
-        "cmake/3.28.3#platform"
+        "cmake/3.28.3#platform",
+        "automake/1.16.5#b91b7c384c3deaa9d535be02da14d04f%1755524470.56",
+        "autoconf/2.71#51077f068e61700d65bb05541ea1e4b0%1731054366.86",
+        "abseil/20260107.1#883e95a7be2b767999f64669ac642e5d%1773137897.755"
     ],
     "python_requires": [],
+    "overrides": {
+        "nlohmann_json/3.11.3": [
+            "nlohmann_json/3.12.0"
+        ]
+    },
     "config_requires": []
 }

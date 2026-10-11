@@ -2,6 +2,7 @@
 
 #include "fileops/operation.hpp"
 #include "fileops/telemetry/log.hpp"
+#include "fileops/telemetry/observer.hpp"
 
 #include <filesystem>
 #include <functional>
@@ -10,11 +11,14 @@
 
 namespace fileops {
 
-/// The four file operations the tool offers. Every call is timed and logged with a stable event id,
-/// so callers and tests can observe exactly what happened without inspecting the file system.
+/// The four file operations the tool offers. Every call is timed, logged with a stable event id and
+/// reported to an Observer (the span and metric facts), so callers and tests can observe exactly
+/// what happened without inspecting the file system.
 class FileOperations {
 public:
-    explicit FileOperations(telemetry::Logger& logger) : logger_(logger) {}
+    explicit FileOperations(telemetry::Logger& logger,
+                            telemetry::Observer& observer = telemetry::null_observer())
+        : logger_(logger), observer_(observer) {}
 
     /// Creates a file, empty or with the given text (UTF-8, written exactly as given).
     Result create(const std::filesystem::path& path,
@@ -38,11 +42,10 @@ public:
     Result remove(const std::filesystem::path& path, bool ignore_missing = false);
 
 private:
-    Result execute(Operation operation,
-                   const std::filesystem::path& path,
-                   const std::function<Result()>& body);
+    Result execute(const telemetry::OperationContext& context, const std::function<Result()>& body);
 
     telemetry::Logger& logger_;
+    telemetry::Observer& observer_;
 };
 
 }  // namespace fileops

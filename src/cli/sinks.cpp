@@ -1,9 +1,12 @@
 #include "sinks.hpp"
 
+#include <algorithm>
 #include <chrono>
 #include <format>
 #include <string>
+#include <utility>
 #include <variant>
+#include <vector>
 
 #include <nlohmann/json.hpp>
 
@@ -93,7 +96,31 @@ public:
     }
 };
 
+class TeeLogger final : public telemetry::Logger {
+public:
+    explicit TeeLogger(std::vector<std::unique_ptr<telemetry::Logger>> sinks) : sinks_(std::move(sinks)) {}
+
+    [[nodiscard]] bool enabled(LogLevel level) const noexcept override {
+        return std::ranges::any_of(sinks_, [&](const auto& sink) { return sink->enabled(level); });
+    }
+
+    void log(const LogRecord& record) override {
+        for (const auto& sink : sinks_) {
+            if (sink->enabled(record.level)) {
+                sink->log(record);
+            }
+        }
+    }
+
+private:
+    std::vector<std::unique_ptr<telemetry::Logger>> sinks_;
+};
+
 }  // namespace
+
+std::unique_ptr<telemetry::Logger> make_tee(std::vector<std::unique_ptr<telemetry::Logger>> sinks) {
+    return std::make_unique<TeeLogger>(std::move(sinks));
+}
 
 std::unique_ptr<telemetry::Logger> make_sink(LogFormat format, LogLevel minimum, std::ostream& out) {
     if (minimum == LogLevel::None) {
