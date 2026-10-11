@@ -137,8 +137,8 @@ void OtlpReceiver::handle(int client) {
     }
     const std::string headers = raw.substr(0, header_end + 2);
     std::string body = raw.substr(header_end + 4);
-    const auto length = static_cast<std::size_t>(
-        std::stoul(header(headers, "Content-Length").empty() ? "0" : header(headers, "Content-Length")));
+    const std::size_t length =
+        std::stoul(header(headers, "Content-Length").empty() ? "0" : header(headers, "Content-Length"));
     if (!read_exact(client, body, length)) {
         return;
     }
@@ -153,7 +153,9 @@ void OtlpReceiver::handle(int client) {
         requests_.push_back(std::move(request));
     }
     const std::string response = "HTTP/1.1 200 OK\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
-    (void)::write(client, response.data(), response.size());
+    if (::write(client, response.data(), response.size()) < 0) {
+        return;  // the client went away; nothing to do
+    }
 }
 
 }  // namespace fileops::test
