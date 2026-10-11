@@ -12,7 +12,7 @@ has no matching section below.
 ### Added
 
 - `create`, `copy`, `combine` and `delete` commands with safe-by-default overwrite handling
-  (`--force`), the same command-line contract as the C# `fileops` tool.
+  (`--force`).
 - Atomic writes: output goes to a temporary sibling file created with the final permission bits,
   flushed, and renamed (or hard-linked when not overwriting) into place, so an interrupted run never
   leaves a partial file. `combine` can therefore append in place (`combine a b a --force`).
@@ -24,7 +24,7 @@ has no matching section below.
 - Stable exit codes: 0 success, 1 usage, 2 not found, 3 already exists, 4 I/O error, 70 internal.
 - OpenTelemetry: one span per operation, an operations counter, a duration histogram and a bytes
   counter, exported over OTLP/HTTP together with log records when `OTEL_EXPORTER_OTLP_ENDPOINT` is
-  set; the same span tags and instruments as the C# tool. Verified end to end by an integration
+  set. Verified end to end by an integration
   test that receives the OTLP payloads.
 - Structured logging (`--log-level`, `--log-format text|json`, `FILEOPS_LOG_*` env) to stderr with
   stable event ids and names; stdout is reserved for results. Usage errors are `fileops: <message>`

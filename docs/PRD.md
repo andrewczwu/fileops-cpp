@@ -28,11 +28,8 @@ delivered as a single file that installs on a Debian-based Linux system; structu
 larger project. Evaluation criteria were CI/CD practice, use of version control, and the technical
 quality of the implementation.
 
-A first implementation in C# ([andrewczwu/fileops](https://github.com/andrewczwu/fileops)) is
-shipped. This repository is the same product built with the toolchain the brief suggested — C++
-and CMake — keeping the command-line contract, exit codes and log schema identical so that the two
-are interchangeable for scripts and log consumers. Everything beyond the four commands is a
-decision about *how well* to meet the brief, recorded in [docs/adr](adr).
+The product is built with the toolchain the brief suggested: C++ and CMake. Everything beyond the
+four commands is a decision about *how well* to meet the brief, recorded in [docs/adr](adr).
 
 ## 3. Users
 
@@ -125,7 +122,7 @@ Telemetry is a documented contract ([docs/OBSERVABILITY.md](OBSERVABILITY.md)), 
 | --- | --- |
 | Structured logs | Every operation emits start, complete or fail records with stable event ids (1xxx lifecycle, 2xxx create, 3xxx copy, 4xxx combine, 5xxx delete) and event names, with named fields (paths, bytes, duration, exit code, reason). |
 | Formats | Human-readable text (UTC times) or one JSON object per line (`--log-format json`), always on stderr. Off by default; enabled by flag or `FILEOPS_LOG_LEVEL` / `FILEOPS_LOG_FORMAT`. |
-| Schema stability | The JSON record shape `{Timestamp, EventId, EventName, LogLevel, Category, Message, State}` and the event ids are identical to the C# tool's, so one log consumer serves both. |
+| Schema stability | The JSON record shape `{Timestamp, EventId, EventName, LogLevel, Category, Message, State}` and the event ids are stable; changing either is a breaking change for log consumers. |
 | Traces | One span per operation (`fileops.<operation>`) with path, size, overwrite and exit-code tags; status `Error` with the user-facing message on failure. |
 | Metrics | Operation counter, duration histogram and bytes counter, tagged by operation and outcome. |
 | Export | When `OTEL_EXPORTER_OTLP_ENDPOINT` is set, traces, metrics and logs are exported over OTLP/HTTP; standard `OTEL_*` variables are honoured. Without `--log-level` the exporter receives Information and above while the console stays silent; `--log-level` governs every sink. |

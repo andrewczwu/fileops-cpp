@@ -1,9 +1,7 @@
 # Observability contract
 
 `fileops` treats its own telemetry as part of the interface: tests assert on it, CI publishes it,
-and a failure can be diagnosed from the log stream alone. This document is the contract. The event
-ids, names, message templates and JSON shape are identical to the C# `fileops` tool's, so one log
-consumer serves both.
+and a failure can be diagnosed from the log stream alone. This document is the contract.
 
 ## Channels
 
