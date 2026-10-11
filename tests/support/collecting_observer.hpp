@@ -26,16 +26,23 @@ public:
 
     [[nodiscard]] const std::deque<ObservedOperation>& operations() const noexcept { return operations_; }
 
+    /// A finished operation: context and outcome, both guaranteed present.
+    struct Finished {
+        telemetry::OperationContext context;
+        telemetry::OperationOutcome outcome;
+    };
+
     /// The single observed operation; fails if there is not exactly one or it never finished.
-    [[nodiscard]] const ObservedOperation& single() const {
+    [[nodiscard]] Finished single() const {
         if (operations_.size() != 1) {
             throw std::runtime_error("expected exactly one observed operation, got " +
                                      std::to_string(operations_.size()));
         }
-        if (!operations_.front().outcome) {
+        const auto& op = operations_.front();
+        if (!op.outcome.has_value()) {
             throw std::runtime_error("the observed operation never finished");
         }
-        return operations_.front();
+        return {op.context, *op.outcome};
     }
 
 private:

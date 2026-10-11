@@ -22,13 +22,13 @@ TEST_F(ObserverContractTest, SuccessfulOperationReportsOneOkOutcomeWithBytesAndD
 
     ops_.sut.copy(source, dir_.file("b"));
 
-    const auto& op = ops_.observer.single();
+    const auto op = ops_.observer.single();
     EXPECT_EQ(op.context.operation, Operation::Copy);
-    EXPECT_TRUE(op.outcome.value().succeeded());
-    EXPECT_EQ(op.outcome.value().bytes, 3U);
-    EXPECT_GE(op.outcome.value().duration.count(), 0.0);
-    EXPECT_TRUE(op.outcome.value().error_type.empty());
-    EXPECT_TRUE(op.outcome.value().error_message.empty());
+    EXPECT_TRUE(op.outcome.succeeded());
+    EXPECT_EQ(op.outcome.bytes, 3U);
+    EXPECT_GE(op.outcome.duration.count(), 0.0);
+    EXPECT_TRUE(op.outcome.error_type.empty());
+    EXPECT_TRUE(op.outcome.error_message.empty());
 }
 
 TEST_F(ObserverContractTest, CopyContextRecordsSourceDestinationAndOverwrite) {
@@ -36,7 +36,7 @@ TEST_F(ObserverContractTest, CopyContextRecordsSourceDestinationAndOverwrite) {
 
     ops_.sut.copy(source, dir_.file("b"), true);
 
-    const auto& ctx = ops_.observer.single().context;
+    const auto ctx = ops_.observer.single().context;
     EXPECT_EQ(ctx.path, dir_.file("b"));
     EXPECT_EQ(ctx.source, source);
     EXPECT_EQ(ctx.destination, dir_.file("b"));
@@ -50,7 +50,7 @@ TEST_F(ObserverContractTest, CombineContextRecordsBothInputsAndTheOutput) {
 
     ops_.sut.combine(a, b, dir_.file("out"));
 
-    const auto& ctx = ops_.observer.single().context;
+    const auto ctx = ops_.observer.single().context;
     EXPECT_EQ(ctx.operation, Operation::Combine);
     EXPECT_EQ(ctx.source, a);
     EXPECT_EQ(ctx.source2, b);
@@ -63,10 +63,10 @@ TEST_F(ObserverContractTest, DeleteContextHasNoOverwriteFlag) {
 
     ops_.sut.remove(path);
 
-    const auto& op = ops_.observer.single();
+    const auto op = ops_.observer.single();
     EXPECT_EQ(op.context.operation, Operation::Delete);
     EXPECT_FALSE(op.context.overwrite.has_value());
-    EXPECT_EQ(op.outcome.value().bytes, 3U);
+    EXPECT_EQ(op.outcome.bytes, 3U);
 }
 
 TEST_F(ObserverContractTest, FailedOperationReportsExitCodeErrorTypeAndMessage) {
@@ -74,7 +74,7 @@ TEST_F(ObserverContractTest, FailedOperationReportsExitCodeErrorTypeAndMessage) 
         ops_.sut.copy(dir_.file("missing"), dir_.file("b"));
         FAIL() << "expected Error";
     } catch (const Error& e) {
-        const auto& outcome = ops_.observer.single().outcome.value();
+        const auto outcome = ops_.observer.single().outcome;
         EXPECT_FALSE(outcome.succeeded());
         EXPECT_EQ(outcome.exit_code, ExitCode::NotFound);
         EXPECT_EQ(outcome.error_type, "fileops::Error");
