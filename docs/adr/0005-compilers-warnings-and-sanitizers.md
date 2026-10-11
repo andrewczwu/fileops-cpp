@@ -45,8 +45,13 @@ than a latent bug. It also has to decide what the shipped binary depends on at r
   Ubuntu 22.04 or Debian 12 archives), a compiler from a third-party PPA (unpinned supply chain), or
   a musl toolchain (a second libc and a non-Debian image without lintian). Static glibc costs none
   of that.
-- The documented hazards of static glibc are name-service, locale and `dlopen` lookups, which this
-  tool never performs; the linker emits no such warnings for it. The binary is about 2.5 MB.
+- The documented hazards of static glibc are name-service, locale and `dlopen` lookups. The tool
+  itself performs none; the linker does warn about `getaddrinfo`/`gethostbyname` in OpenSSL's BIO
+  layer, `getpwuid_r` in libcurl's netrc support, `getservbyname_r` in c-ares and `dlopen` in
+  OpenSSL's provider loader. None of those paths is reached: the OTLP exporter resolves names
+  through c-ares (which reads `/etc/resolv.conf` and `/etc/hosts` itself), uses numeric ports, never
+  reads a netrc file, and loads no OpenSSL engines. The integration test exercises the export
+  end to end against the static binary.
 
 ## Consequences
 
