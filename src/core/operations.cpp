@@ -135,19 +135,25 @@ Error translate(const std::filesystem::filesystem_error& e, const std::filesyste
 Result FileOperations::create(const std::filesystem::path& path,
                               std::optional<std::string_view> text,
                               bool overwrite) {
-    return execute({.operation = Operation::Create, .path = path, .overwrite = overwrite}, [&] {
-        require_path(path, "path");
-        reject_directory(path);
+    return execute({.operation = Operation::Create,
+                    .path = path,
+                    .source = std::nullopt,
+                    .source2 = std::nullopt,
+                    .destination = std::nullopt,
+                    .overwrite = overwrite},
+                   [&] {
+                       require_path(path, "path");
+                       reject_directory(path);
 
-        const std::uint64_t bytes = atomic_file::write(path, overwrite, [&](int fd) {
-            if (text && !text->empty()) {
-                atomic_file::write_all(fd, text->data(), text->size());
-            }
-        });
+                       const std::uint64_t bytes = atomic_file::write(path, overwrite, [&](int fd) {
+                           if (text && !text->empty()) {
+                               atomic_file::write_all(fd, text->data(), text->size());
+                           }
+                       });
 
-        core_log::file_created(logger_, path, bytes);
-        return Result{Operation::Create, path, bytes};
-    });
+                       core_log::file_created(logger_, path, bytes);
+                       return Result{Operation::Create, path, bytes};
+                   });
 }
 
 Result FileOperations::copy(const std::filesystem::path& source,
@@ -157,6 +163,7 @@ Result FileOperations::copy(const std::filesystem::path& source,
         {.operation = Operation::Copy,
          .path = destination,
          .source = source,
+         .source2 = std::nullopt,
          .destination = destination,
          .overwrite = overwrite},
         [&] {
@@ -211,34 +218,41 @@ Result FileOperations::combine(const std::filesystem::path& first,
 }
 
 Result FileOperations::remove(const std::filesystem::path& path, bool ignore_missing) {
-    return execute({.operation = Operation::Delete, .path = path}, [&] {
-        require_path(path, "path");
-        // The link itself is what gets removed, so look at it rather than through it: a symlink to a
-        // directory is deletable, and a dangling symlink exists.
-        if (std::filesystem::is_directory(std::filesystem::symlink_status(path))) {
-            throw Error(ExitCode::UsageError, std::format("is a directory: {}", path.string()), path);
-        }
+    return execute(
+        {.operation = Operation::Delete,
+         .path = path,
+         .source = std::nullopt,
+         .source2 = std::nullopt,
+         .destination = std::nullopt,
+         .overwrite = std::nullopt},
+        [&] {
+            require_path(path, "path");
+            // The link itself is what gets removed, so look at it rather than through it: a symlink to a
+            // directory is deletable, and a dangling symlink exists.
+            if (std::filesystem::is_directory(std::filesystem::symlink_status(path))) {
+                throw Error(ExitCode::UsageError, std::format("is a directory: {}", path.string()), path);
+            }
 
-        struct stat st {};
-        if (::lstat(path.c_str(), &st) != 0) {
-            if (errno != ENOENT) {
+            struct stat st {};
+            if (::lstat(path.c_str(), &st) != 0) {
+                if (errno != ENOENT) {
+                    throw_errno(errno, path);
+                }
+                if (!ignore_missing) {
+                    throw Error(ExitCode::NotFound, std::format("file not found: {}", path.string()), path);
+                }
+                core_log::delete_skipped_missing(logger_, path);
+                return Result{Operation::Delete, path, 0};
+            }
+
+            const auto bytes = static_cast<std::uint64_t>(st.st_size);
+            if (::unlink(path.c_str()) != 0) {
                 throw_errno(errno, path);
             }
-            if (!ignore_missing) {
-                throw Error(ExitCode::NotFound, std::format("file not found: {}", path.string()), path);
-            }
-            core_log::delete_skipped_missing(logger_, path);
-            return Result{Operation::Delete, path, 0};
-        }
 
-        const auto bytes = static_cast<std::uint64_t>(st.st_size);
-        if (::unlink(path.c_str()) != 0) {
-            throw_errno(errno, path);
-        }
-
-        core_log::file_deleted(logger_, path, bytes);
-        return Result{Operation::Delete, path, bytes};
-    });
+            core_log::file_deleted(logger_, path, bytes);
+            return Result{Operation::Delete, path, bytes};
+        });
 }
 
 /// Runs `body` with timing, lifecycle logs and the observer scope, and maps raw file-system failures
@@ -271,7 +285,11 @@ Result FileOperations::execute(const telemetry::OperationContext& context,
                                       path,
                                       result.bytes,
                                       std::chrono::duration<double, std::milli>(duration).count());
-        scope->finish({.exit_code = ExitCode::Success, .bytes = result.bytes, .duration = duration});
+        scope->finish({.exit_code = ExitCode::Success,
+                       .bytes = result.bytes,
+                       .duration = duration,
+                       .error_type = {},
+                       .error_message = {}});
         return result;
     } catch (const Error& e) {
         fail(e, "fileops::Error");
