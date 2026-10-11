@@ -1,0 +1,49 @@
+root = true
+
+[*]
+indent_style = space
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# C++: clang-format owns layout (.clang-format, 4-space indent, 110 columns) and aligns
+# continuation lines to the opening bracket, so the indent-size check is left to it.
+[*.{cpp,hpp}]
+indent_size = unset
+max_line_length = 110
+
+[{CMakeLists.txt,*.cmake}]
+indent_size = 2
+
+[*.{json,yml,yaml}]
+indent_size = 2
+
+[conanfile.py]
+indent_size = 4
+
+# Read by shfmt and editorconfig-checker.
+[*.sh]
+indent_size = 2
+shell_variant = bash
+binary_next_line = true
+switch_case_indent = true
+space_redirects = false
+
+[.githooks/*]
+indent_size = 2
+shell_variant = bash
+
+[*.md]
+trim_trailing_whitespace = false
+max_line_length = off
+
+[Makefile]
+indent_style = tab
+
+[*.1]
+trim_trailing_whitespace = false
+insert_final_newline = false
+
+[conan/profiles/*]
+indent_size = 2

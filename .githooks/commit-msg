@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Reject commit messages that do not follow Conventional Commits. Enabled by `make setup`.
+set -euo pipefail
+exec "$(git rev-parse --show-toplevel)/scripts/ci/check-commits.sh" --message "$1"

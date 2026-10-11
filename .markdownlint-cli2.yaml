@@ -1,0 +1,21 @@
+# markdownlint-cli2 configuration (https://github.com/DavidAnson/markdownlint-cli2#configuration)
+config:
+  default: true
+  # Prose is wrapped at ~100 columns by hand; tables and code blocks are exempt.
+  MD013:
+    line_length: 120
+    code_blocks: false
+    tables: false
+  # Headings are not used as the sole top-level element in ADRs (they start with a status line).
+  MD041: false
+  # `<details>` blocks are used in generated CI summaries; allow inline HTML.
+  MD033: false
+  # Allow duplicate headings in different sections (e.g. "Reasons" / "Consequences" in each ADR).
+  MD024:
+    siblings_only: true
+
+ignores:
+  - artifacts/**
+  - build/**
+  - .conan2/**
+  - node_modules/**

@@ -1,0 +1,6 @@
+# Review ownership. Pipeline and packaging changes get an explicit owner so they are never merged unnoticed.
+*                   @andrewczwu
+/.github/           @andrewczwu
+/docker/            @andrewczwu
+/packaging/         @andrewczwu
+/scripts/           @andrewczwu

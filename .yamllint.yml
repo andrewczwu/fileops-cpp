@@ -1,0 +1,22 @@
+# yamllint configuration (https://yamllint.readthedocs.io/en/stable/configuration.html)
+extends: default
+
+rules:
+  line-length:
+    max: 140
+    allow-non-breakable-inline-mappings: true
+  # GitHub Actions uses `on:` as a key; the default truthy rule would flag it.
+  truthy:
+    allowed-values: ["true", "false", "on"]
+    check-keys: false
+  comments:
+    min-spaces-from-content: 1
+  document-start: disable
+  indentation:
+    spaces: 2
+    indent-sequences: consistent
+
+ignore: |
+  artifacts/
+  .conan2/
+  build/

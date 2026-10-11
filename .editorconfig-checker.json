@@ -1,0 +1,13 @@
+{
+  "Exclude": [
+    "^artifacts/",
+    "^build/",
+    "^\\.conan2/",
+    "^LICENSE$",
+    "\\.1$",
+    "^conan\\.lock$"
+  ],
+  "Disable": {
+    "MaxLineLength": true
+  }
+}

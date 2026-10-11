@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# Pre-commit guard: block secrets, check C++ formatting and lint what is staged before it reaches
+# history. Enable with `make setup` (sets core.hooksPath to .githooks). Only locally installed tools
+# run here so the hook stays fast; CI runs the full set from pinned images and is the real gate.
+set -euo pipefail
+
+status=0
+staged="$(git diff --cached --name-only --diff-filter=ACM)"
+
+if command -v gitleaks >/dev/null 2>&1; then
+  if ! gitleaks git --pre-commit --staged --no-banner --redact; then
+    echo "pre-commit: gitleaks found a possible secret in staged changes. Remove it, or add a documented allowlist entry to .gitleaks.toml." >&2
+    status=1
+  fi
+else
+  echo "pre-commit: gitleaks not installed (brew install gitleaks); secret scan skipped." >&2
+fi
+
+if grep -qE '\.(cpp|hpp)$' <<<"${staged}"; then
+  # Only when a clang-format of the pinned major is installed; the Docker fallback is too slow for a hook.
+  if command -v clang-format-18 >/dev/null 2>&1 || [[ -x /opt/homebrew/opt/llvm@18/bin/clang-format ]] ||
+    { command -v clang-format >/dev/null 2>&1 && clang-format --version | grep -q 'version 18\.'; }; then
+    scripts/format.sh --check || status=1
+  else
+    echo "pre-commit: clang-format 18 not installed (brew install llvm@18); format check skipped." >&2
+  fi
+fi
+
+categories=()
+grep -qE '(\.sh$|^\.githooks/)' <<<"${staged}" && categories+=(shell)
+grep -qE '^docker/Dockerfile' <<<"${staged}" && categories+=(docker)
+grep -qE '\.ya?ml$' <<<"${staged}" && categories+=(yaml)
+grep -qE '\.md$' <<<"${staged}" && categories+=(markdown)
+grep -qE '^\.github/workflows/' <<<"${staged}" && categories+=(workflows)
+[[ -n "${staged}" ]] && categories+=(editorconfig)
+
+if [[ ${#categories[@]} -gt 0 ]]; then
+  LINT_SKIP_MISSING=1 scripts/lint.sh "${categories[@]}" || status=1
+fi
+
+exit "${status}"

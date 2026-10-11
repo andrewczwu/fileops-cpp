@@ -1,0 +1,10 @@
+# hadolint configuration (https://github.com/hadolint/hadolint#configure)
+failure-threshold: warning
+ignored:
+  # DL3008: "pin versions in apt-get install". The base image is pinned to the LTS release, the
+  # compilers are pinned by their major in the package names (gcc-14, clang-18), and the image is
+  # rebuilt weekly to pick up security updates; pinning every apt version would make the image
+  # unbuildable as soon as Ubuntu rotates one.
+  - DL3008
+trustedRegistries:
+  - docker.io

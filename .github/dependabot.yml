@@ -1,0 +1,23 @@
+# Keeps SHA-pinned actions and the base image current via weekly PRs (grouped where configured).
+# Each ecosystem waits seven days after a version is published before proposing it, so a release
+# that turns out to be compromised or broken has time to be yanked before it reaches this repo.
+# Conan packages are not a Dependabot ecosystem: conanfile.py pins them and conan.lock pins the
+# resolved graph; bump them deliberately (see CONTRIBUTING.md, "Updating dependencies").
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    groups:
+      actions:
+        patterns: ["*"]
+
+  - package-ecosystem: docker
+    directory: /docker
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7

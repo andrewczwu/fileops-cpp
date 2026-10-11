@@ -1,0 +1,48 @@
+# Static analysis, run by `make tidy` locally and the Test (clang-debug) job in CI against compile_commands.json.
+# Every enabled check is an error; opt-outs below carry a reason.
+Checks: >
+  -*,
+  bugprone-*,
+  cert-*,
+  clang-analyzer-*,
+  concurrency-*,
+  cppcoreguidelines-*,
+  misc-*,
+  modernize-*,
+  performance-*,
+  portability-*,
+  readability-*,
+  -modernize-use-trailing-return-type,
+  -readability-identifier-length,
+  -readability-magic-numbers,
+  -cppcoreguidelines-avoid-magic-numbers,
+  -cppcoreguidelines-pro-type-vararg,
+  -cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+  -cppcoreguidelines-pro-bounds-pointer-arithmetic,
+  -misc-include-cleaner,
+  -misc-non-private-member-variables-in-classes,
+  -bugprone-easily-swappable-parameters,
+  -cert-err58-cpp,
+  -performance-enum-size,
+  -cppcoreguidelines-avoid-const-or-ref-data-members,
+  -modernize-use-nodiscard
+# modernize-use-trailing-return-type: style preference, not a defect.
+# readability-identifier-length / magic-numbers: POSIX code legitimately uses fd, rc, 0755.
+# pro-type-vararg / bounds: unavoidable at the POSIX call boundary (open, write, read).
+# misc-include-cleaner: clang-tidy's header model disagrees with the standard library's.
+# non-private-member-variables: plain structs are data.
+# easily-swappable-parameters: (source, destination) pairs are the domain.
+# cert-err58-cpp: static test fixtures in GoogleTest.
+# performance-enum-size: the enums are part of the API and exit codes are ints by definition.
+# avoid-const-or-ref-data-members: a reference member is how an injected, non-owned dependency
+#   (the logger) is expressed here; a pointer would only add null checks.
+# modernize-use-nodiscard: applied by hand where ignoring a result is a bug, not to every getter.
+WarningsAsErrors: '*'
+HeaderFilterRegex: '(include|src|tests)/.*'
+FormatStyle: file
+CheckOptions:
+  readability-function-cognitive-complexity.Threshold: 30
+  # GoogleTest assertion macros expand to nested ifs; count the test body, not the framework.
+  readability-function-cognitive-complexity.IgnoreMacros: true
+  cppcoreguidelines-special-member-functions.AllowSoleDefaultDtor: true
+  misc-const-correctness.AnalyzeValues: false

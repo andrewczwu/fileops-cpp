@@ -1,0 +1,10 @@
+# shellcheck configuration (https://www.shellcheck.net/wiki/Directive)
+# Scripts declare `#!/usr/bin/env bash`; hooks too. Treat everything as bash.
+shell=bash
+# Report everything down to style suggestions; the build fails on any finding.
+severity=style
+# Follow `source`d files relative to the script.
+source-path=SCRIPTDIR
+# SC2312: "consider invoking this command separately to avoid masking its return value" is
+# triggered by every `$(...)` inside a string; we use `set -o pipefail` and keep substitutions simple.
+disable=SC2312

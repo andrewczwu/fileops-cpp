@@ -1,0 +1,14 @@
+# Defaults for running the GitHub Actions workflows locally with `act` (https://nektosact.com).
+# Prefer `make act-<job>` (e.g. `make act-test`, `make act-build`, `make act-smoke`): it scopes act to ci.yml — every
+# workflow has a job called `build`, so a bare `act -j build` runs three of them. The container job
+# resolves Conan dependencies from the network (act cannot add a cache mount to a job that declares its
+# own container `options`). Steps that need GitHub services (OIDC, artifacts API, code scanning)
+# are guarded with `if: ${{ !env.ACT }}` (steps) or `github.actor != 'nektos/act'` (jobs).
+#
+# The toolchain image must be present locally under the name the workflows use:
+#   docker pull ghcr.io/andrewczwu/fileops-cpp-build:main     (or: make build-image BUILD_IMAGE=ghcr.io/andrewczwu/fileops-cpp-build:main)
+-P ubuntu-latest=catthehacker/ubuntu:act-22.04
+--container-architecture linux/amd64
+--action-offline-mode
+--pull=false
+--artifact-server-path /tmp/act-artifacts

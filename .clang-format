@@ -1,0 +1,24 @@
+# Formatting is enforced by `make format-check` (clang-format --dry-run -Werror) locally and in CI.
+BasedOnStyle: Google
+Standard: c++20
+ColumnLimit: 110
+IndentWidth: 4
+AccessModifierOffset: -4
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+BinPackArguments: false
+BinPackParameters: false
+DerivePointerAlignment: false
+PointerAlignment: Left
+IncludeBlocks: Regroup
+IncludeCategories:
+  - Regex: '^"fileops/'
+    Priority: 1
+  - Regex: '^<(gtest|nlohmann|CLI)/'
+    Priority: 3
+  - Regex: '^<.*\.h>'
+    Priority: 4
+  - Regex: '^<'
+    Priority: 2
+InsertNewlineAtEOF: true

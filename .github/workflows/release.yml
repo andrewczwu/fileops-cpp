@@ -1,0 +1,144 @@
+# Release: push a tag like v1.2.3 and this builds, verifies, attests and publishes the artefacts.
+# The version is taken from the tag; the build fails if CHANGELOG.md has no matching section.
+name: Release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash # container steps otherwise get `sh -e`, which has no pipefail
+
+env:
+  CI: "true"
+
+jobs:
+  build:
+    name: Build release artefacts
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    container:
+      # Releases build in an exact, immutable toolchain image (digest from the build-image job summary).
+      image: ghcr.io/andrewczwu/fileops-cpp-build:main
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+      options: --user 1001:1001
+    env:
+      HOME: /home/builder
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Derive version from tag
+        id: version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: scripts/ci/version-from-tag.sh "$TAG" >> "$GITHUB_OUTPUT"
+      - name: Pin timestamps to the tagged commit
+        # Packaging embeds dates (Debian changelog, tarball mtimes); taking them from the commit is
+        # meant to make two builds of the same tag identical (not yet verified by a double build).
+        run: echo "SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)" >> "$GITHUB_ENV"
+      - name: Locate Conan cache
+        run: scripts/ci/conan-cache-path.sh >> "$GITHUB_ENV"
+      # Deliberately no package cache here: release builds resolve dependencies from the locked graph
+      # from scratch, so a poisoned cache entry from a pull request can never reach a published artefact.
+      - name: Sanitizer tests (gcc-debug)
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: make test PRESET=gcc-debug
+      - name: Build, test, package and lint the release binary
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          make package
+          make lint-deb
+          make release-assets
+      - name: Artefact summary
+        run: scripts/ci/artifact-summary.sh >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: release-assets
+          path: artifacts/deb
+          if-no-files-found: error
+
+  verify:
+    name: Verify on ${{ matrix.image }}
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        image: [debian:bookworm-slim, debian:trixie-slim, ubuntu:22.04, ubuntu:24.04]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-assets
+          path: artifacts/deb
+      - name: Install smoke test
+        env:
+          SMOKE_IMAGES: ${{ matrix.image }}
+        run: scripts/smoke-test.sh
+
+  publish:
+    name: Publish GitHub release
+    needs: [build, verify]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write # create the release
+      id-token: write # sign the provenance attestation
+      attestations: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-assets
+          path: artifacts/deb
+      - name: Attest build provenance (SLSA)
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4
+        with:
+          subject-path: |
+            artifacts/deb/*.deb
+            artifacts/deb/*.tar.gz
+            artifacts/deb/SHA256SUMS
+      - name: Release notes from CHANGELOG
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
+        run: scripts/ci/changelog-section.sh "$VERSION" > artifacts/release-notes.md
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+          VERSION: ${{ needs.build.outputs.version }}
+          PRERELEASE: ${{ needs.build.outputs.prerelease }}
+        # --generate-notes appends the merged-PR list below the CHANGELOG section. Versions with a
+        # pre-release suffix (1.2.0-rc.1) are published as pre-releases, which is also how the
+        # release path itself gets exercised before a final version.
+        run: |
+          flags=()
+          [ "$PRERELEASE" = "true" ] && flags+=(--prerelease)
+          gh release create "$TAG" \
+            --title "fileops-cpp $VERSION" \
+            --notes-file artifacts/release-notes.md \
+            --generate-notes \
+            --verify-tag \
+            "${flags[@]}" \
+            artifacts/deb/*.deb artifacts/deb/*.tar.gz artifacts/deb/SHA256SUMS

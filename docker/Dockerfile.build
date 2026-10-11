@@ -1,0 +1,47 @@
+# Toolchain image used by CI and by `make docker-*` so local and pipeline builds are identical.
+# Published to ghcr.io/andrewczwu/fileops-cpp-build by .github/workflows/build-image.yml.
+#
+# Ubuntu 24.04 is the newest LTS that ships both compilers the project builds with from its own
+# archive: GCC 14 (the release compiler) and Clang 18 (second opinion, clang-tidy, clang-format).
+# Its glibc is 2.39 and its libstdc++ uses glibc 2.38 symbols, which is why the release binary is
+# linked fully statically (cmake/StaticBinary.cmake); the install smoke test on Debian 12/13 and
+# Ubuntu 22.04/24.04 is what proves it runs there.
+#
+# Conan is pinned to the exact version developers use (CONTRIBUTING.md); conan.lock pins the
+# dependency graph. Everything else comes from the Ubuntu archive at whatever security-patched
+# version is current, which is why the image is rebuilt weekly.
+ARG BASE_IMAGE=ubuntu:24.04
+FROM ${BASE_IMAGE}
+
+ARG CONAN_VERSION=2.33.0
+ENV DEBIAN_FRONTEND=noninteractive \
+    PIPX_HOME=/opt/pipx \
+    PIPX_BIN_DIR=/usr/local/bin
+
+# make: the repository's task runner. jq: telemetry summaries. lintian + dpkg-dev: build and
+# validate the .deb in the same job that compiles it. file/binutils: artefact checks.
+# The pipeline steps pipe into other commands; make a failing producer fail the layer (hadolint DL4006).
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+      gcc-14 g++-14 \
+      clang-18 clang-format-18 clang-tidy-18 libclang-rt-18-dev \
+      cmake ninja-build make \
+      python3 pipx \
+      dpkg-dev lintian binutils file \
+      git jq ca-certificates curl gzip xz-utils \
+ && rm -rf /var/lib/apt/lists/* \
+ # The `dev` preset and anything that says just "c++" gets GCC 14, not a distro default.
+ && update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 100 \
+ && update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-14 100 \
+ && update-alternatives --install /usr/bin/cc cc /usr/bin/gcc-14 100 \
+ && update-alternatives --install /usr/bin/c++ c++ /usr/bin/g++-14 100 \
+ # Unversioned names for the LLVM tools so scripts and presets do not hard-code the major version.
+ && for tool in clang clang++ clang-format clang-tidy run-clang-tidy clang-apply-replacements; do \
+      update-alternatives --install "/usr/bin/${tool}" "${tool}" "/usr/bin/${tool}-18" 100; \
+    done \
+ && pipx install "conan==${CONAN_VERSION}" \
+ # Unprivileged user: lets permission-denied tests run (root bypasses file modes).
+ && useradd --create-home --uid 1001 --shell /bin/bash builder
+
+WORKDIR /src
