@@ -27,8 +27,8 @@ constexpr int timeout_ms = 60'000;
 
 // getenv is not thread safe in general; the test harness is single-threaded and never calls setenv.
 std::string binary_path() {
-    if (const char* bin = std::getenv("FILEOPS_BIN");
-        bin != nullptr && *bin != '\0') {  // NOLINT(concurrency-mt-unsafe)
+    const char* bin = std::getenv("FILEOPS_BIN");  // NOLINT(concurrency-mt-unsafe)
+    if (bin != nullptr && *bin != '\0') {
         return bin;
     }
     return FILEOPS_DEFAULT_BIN;
