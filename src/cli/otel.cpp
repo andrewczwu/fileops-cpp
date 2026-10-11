@@ -25,6 +25,7 @@
 #include <opentelemetry/sdk/metrics/export/periodic_exporting_metric_reader_options.h>
 #include <opentelemetry/sdk/metrics/meter_provider.h>
 #include <opentelemetry/sdk/metrics/meter_provider_factory.h>
+#include <opentelemetry/sdk/metrics/view/view_registry.h>
 #include <opentelemetry/sdk/resource/resource.h>
 #include <opentelemetry/sdk/trace/simple_processor_factory.h>
 #include <opentelemetry/sdk/trace/tracer_provider.h>
@@ -251,7 +252,8 @@ std::unique_ptr<Runtime> Runtime::start_if_configured(const std::string& version
     // run outlives it.
     reader_options.export_interval_millis = std::chrono::milliseconds(60'000);
     reader_options.export_timeout_millis = std::chrono::milliseconds(10'000);
-    providers->meters = sdk::metrics::MeterProviderFactory::Create();
+    providers->meters =
+        sdk::metrics::MeterProviderFactory::Create(std::make_unique<sdk::metrics::ViewRegistry>(), resource);
     providers->meters->AddMetricReader(sdk::metrics::PeriodicExportingMetricReaderFactory::Create(
         std::move(metric_exporter), reader_options));
 
