@@ -18,6 +18,9 @@ has no matching section below.
   leaves a partial file. `combine` can therefore append in place (`combine a b a --force`).
   Names up to the 255-byte file-system limit work; the temporary name is shortened on a UTF-8
   character boundary.
+- `delete` removes symbolic links themselves (dangling ones and links to directories included)
+  rather than looking through them; writes flush the destination directory after the rename so
+  the new name is durable, not just its content.
 - Stable exit codes: 0 success, 1 usage, 2 not found, 3 already exists, 4 I/O error, 70 internal.
 - Structured logging (`--log-level`, `--log-format text|json`, `FILEOPS_LOG_*` env) to stderr with
   stable event ids and names; stdout is reserved for results. Usage errors are `fileops: <message>`
@@ -27,7 +30,7 @@ has no matching section below.
   lintian override for the static binary included; lintian-clean at warning level.
 - Dependencies through Conan 2 with a committed `conan.lock`, compiler-pinned profiles and CMake
   presets for every configuration.
-- Tests: 47 unit tests with an in-memory log collector and 37 integration tests against the real
+- Tests: 49 unit tests with an in-memory log collector and 37 integration tests against the real
   binary, run under GCC 14 and Clang 18 with AddressSanitizer and UndefinedBehaviorSanitizer, and
   again in the release configuration that is packaged.
 - CI: clang-format, secret scanning, shell/Docker/YAML/Markdown/workflow linting, clang-tidy, the

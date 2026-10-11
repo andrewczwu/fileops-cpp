@@ -20,7 +20,7 @@ if grep -qE '\.(cpp|hpp)$' <<<"${staged}"; then
   # Only when a clang-format of the pinned major is installed; the Docker fallback is too slow for a hook.
   if command -v clang-format-18 >/dev/null 2>&1 || [[ -x /opt/homebrew/opt/llvm@18/bin/clang-format ]] ||
     { command -v clang-format >/dev/null 2>&1 && clang-format --version | grep -q 'version 18\.'; }; then
-    scripts/format.sh --check || status=1
+    scripts/format.sh --check-staged || status=1
   else
     echo "pre-commit: clang-format 18 not installed (brew install llvm@18); format check skipped." >&2
   fi

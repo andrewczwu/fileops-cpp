@@ -6,7 +6,7 @@ set -euo pipefail
 
 TAG="${1:?usage: version-from-tag.sh vX.Y.Z[-pre]}"
 
-if [[ ! "${TAG}" =~ ^v([0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?)$ ]]; then
+if [[ ! "${TAG}" =~ ^v([0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?)$ ]]; then
   echo "::error::tag '${TAG}' is not vMAJOR.MINOR.PATCH[-prerelease]" >&2
   exit 1
 fi

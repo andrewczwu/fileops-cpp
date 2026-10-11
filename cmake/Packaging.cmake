@@ -12,15 +12,14 @@ set(CPACK_PACKAGE_DESCRIPTION
   "Command-line tool for creating, copying, combining and deleting files.
  Writes are atomic (temp file + rename), destinations are never overwritten
  without --force, exit codes are stable, and every run can emit structured
- JSON logs. Ships as a single native executable depending only on glibc.")
+ JSON logs. Ships as one fully static executable with no run-time dependencies.")
 # editorconfig-checker-enable
 set(CPACK_PACKAGE_HOMEPAGE_URL "${PROJECT_HOMEPAGE_URL}")
 set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
 set(CPACK_STRIP_FILES ON)
 
-# Debian versions use `~` for pre-releases so 1.2.0~rc.1 sorts before 1.2.0; the file name keeps the
-# SemVer form because GitHub rewrites `~` in release asset names.
-string(REPLACE "-" "~" FILEOPS_DEB_VERSION "${FILEOPS_VERSION}")
+# The control file carries the Debian form of the version (FILEOPS_DEB_VERSION, set in the top-level
+# CMakeLists.txt); the file name keeps the SemVer form because GitHub rewrites `~` in asset names.
 set(CPACK_PACKAGE_VERSION "${FILEOPS_DEB_VERSION}")
 set(CPACK_PACKAGE_FILE_NAME "fileops-cpp_${FILEOPS_VERSION}_amd64")
 
