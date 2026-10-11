@@ -1,0 +1,5 @@
+fileops-cpp (@_deb_version@) stable; urgency=medium
+
+  * See https://github.com/andrewczwu/fileops-cpp/blob/main/CHANGELOG.md
+
+ -- Andrew Wu <andrewczwu@gmail.com>  @_changelog_date@

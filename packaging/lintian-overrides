@@ -1,0 +1,5 @@
+# The executable is linked fully statically on purpose: the build image's libstdc++ needs glibc
+# 2.38 symbols, so a dynamic binary would not start on Debian 12 or Ubuntu 22.04. The tool uses no
+# NSS, locale or dlopen functionality, which is what makes static glibc unsafe in general.
+# See cmake/StaticBinary.cmake and docs/adr/0005-compilers-warnings-and-sanitizers.md.
+fileops-cpp: statically-linked-binary [usr/bin/fileops]

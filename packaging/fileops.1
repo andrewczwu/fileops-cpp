@@ -1,0 +1,159 @@
+.TH FILEOPS 1 "October 2026" "fileops-cpp" "User Commands"
+.SH NAME
+fileops \- create, copy, combine and delete files safely
+.SH SYNOPSIS
+.B fileops
+[\fIGLOBAL OPTIONS\fR]
+.I command
+[\fIARGS\fR]
+.br
+.B fileops create
+.I path
+[\fB\-\-text\fR \fITEXT\fR] [\fB\-\-force\fR]
+.br
+.B fileops copy
+.I source destination
+[\fB\-\-force\fR]
+.br
+.B fileops combine
+.I first second output
+[\fB\-\-force\fR]
+.br
+.B fileops delete
+.I path
+[\fB\-\-force\fR]
+.SH DESCRIPTION
+.B fileops
+performs four file operations with conservative defaults: an existing
+destination is never overwritten unless
+.B \-\-force
+is given, and every write goes to a temporary file in the destination
+directory that is renamed into place, so an interrupted run never leaves a
+partially written destination (a run killed by a signal may leave a
+.IB .name. id .tmp
+sibling).
+.PP
+Nothing is written to standard output except by
+.B \-\-help
+and
+.BR \-\-version .
+Diagnostics and optional structured logs go to standard error. A usage error
+prints one
+.RI \(lq "fileops: message" \(rq
+line per error and
+.RB \(lq "fileops: run \(aqfileops \-\-help\(aq for usage" \(rq
+on standard error, writes nothing to standard output and exits 1.
+.SH COMMANDS
+.TP
+.BI create " path"
+Create
+.I path
+as an empty file, or with the content given by
+.B \-\-text
+(UTF\-8, written exactly as given with no trailing newline).
+.TP
+.BI copy " source destination"
+Copy
+.I source
+to
+.IR destination ,
+preserving Unix permission bits. Copying a file onto itself is an error.
+.TP
+.BI combine " first second output"
+Write the bytes of
+.I first
+followed by the bytes of
+.I second
+to
+.IR output .
+Because inputs are fully read before the output is renamed into place,
+.I output
+may be one of the inputs when
+.B \-\-force
+is given, which appends in place.
+.TP
+.BI delete " path"
+Delete
+.IR path .
+Directories are refused.
+.SH OPTIONS
+.TP
+.BR \-f ", " \-\-force
+For
+.BR create ", " copy " and " combine :
+overwrite an existing destination. For
+.BR delete :
+succeed even if the file does not exist (like
+.BR "rm \-f" ).
+.TP
+.BR \-t ", " \-\-text " " \fITEXT\fR
+Initial content for
+.BR create .
+.TP
+.BR \-v ", " \-\-verbose
+Shorthand for
+.BR "\-\-log\-level Information" .
+.TP
+.BI \-\-log\-level " LEVEL"
+Minimum log level written to standard error: Trace, Debug, Information,
+Warning, Error, Critical or None (default None).
+.TP
+.BI \-\-log\-format " FORMAT"
+.B text
+(default) or
+.BR json ,
+one JSON object per line with a stable schema (Timestamp, EventId, EventName,
+LogLevel, Category, Message, State).
+.TP
+.BR \-h ", " \-\-help
+Show help.
+.TP
+.B \-\-version
+Show the version.
+.SH EXIT STATUS
+.TP
+.B 0
+Success.
+.TP
+.B 1
+Usage error: invalid arguments, empty path, source and destination are the
+same file, or the path is a directory.
+.TP
+.B 2
+A required input file or directory does not exist.
+.TP
+.B 3
+The destination already exists and
+.B \-\-force
+was not given.
+.TP
+.B 4
+The file system refused the operation (permission denied, disk full,
+locked file).
+.TP
+.B 70
+Internal error.
+.SH ENVIRONMENT
+.TP
+.B FILEOPS_LOG_LEVEL
+Default for
+.BR \-\-log\-level .
+.TP
+.B FILEOPS_LOG_FORMAT
+Default for
+.BR \-\-log\-format .
+.SH EXAMPLES
+.nf
+fileops create notes.txt \-\-text "hello"
+fileops copy notes.txt backup.txt
+fileops combine part1.bin part2.bin whole.bin
+fileops combine log.txt today.txt log.txt \-\-force   # append in place
+fileops delete backup.txt
+FILEOPS_LOG_FORMAT=json fileops \-v copy a b 2>run.ndjson
+.fi
+.SH SEE ALSO
+.BR cp (1),
+.BR cat (1),
+.BR rm (1)
+.SH BUGS
+https://github.com/andrewczwu/fileops-cpp/issues
