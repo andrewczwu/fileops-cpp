@@ -2,9 +2,19 @@
 
 find_package(CLI11 REQUIRED)
 find_package(nlohmann_json REQUIRED)
+find_package(opentelemetry-cpp REQUIRED)
+
+# The OpenTelemetry mapping is a library of its own so the unit tests can drive it with in-memory
+# exporters; the executable links it together with the console sinks.
+add_library(fileops_otel STATIC otel.cpp)
+add_library(fileops::otel ALIAS fileops_otel)
+target_include_directories(fileops_otel PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(fileops_otel
+  PUBLIC fileops::core opentelemetry-cpp::opentelemetry-cpp
+  PRIVATE fileops::warnings)
 
 add_executable(fileops main.cpp sinks.cpp)
-target_link_libraries(fileops PRIVATE fileops::core CLI11::CLI11 nlohmann_json::nlohmann_json fileops::warnings)
+target_link_libraries(fileops PRIVATE fileops::core fileops::otel CLI11::CLI11 nlohmann_json::nlohmann_json fileops::warnings)
 target_compile_definitions(fileops PRIVATE FILEOPS_VERSION_STRING="${FILEOPS_VERSION}")
 if(FILEOPS_STATIC_BINARY)
   target_link_options(fileops PRIVATE -static) # see cmake/StaticBinary.cmake

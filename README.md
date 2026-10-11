@@ -109,16 +109,28 @@ $ jq -c '{EventId, EventName, LogLevel, State}' run.ndjson
 
 Each JSON record is one line with the fields `Timestamp` (ISO 8601, UTC), `EventId`, `EventName`,
 `LogLevel`, `Category`, `Message` and `State`. Event ids and field names are a documented contract:
-[docs/OBSERVABILITY.md](docs/OBSERVABILITY.md). Traces and metrics over OpenTelemetry
-(`opentelemetry-cpp`) are planned as a second phase and are not implemented yet.
+[docs/OBSERVABILITY.md](docs/OBSERVABILITY.md).
+
+Every operation also produces one OpenTelemetry span and three metrics. Set
+`OTEL_EXPORTER_OTLP_ENDPOINT` and they are exported over OTLP/HTTP, together with log records:
+Information and above by default (the console stays silent), or whatever `--log-level` says, which
+governs every sink. Span tags and instruments are the same as the C# tool's and are part of the
+documented contract.
+
+```sh
+docker run -d -p 4318:4318 otel/opentelemetry-collector
+OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 fileops copy a b
+```
 
 ## Build from source
 
 Requirements: a C++20 compiler (GCC 14, Clang 18 or Apple Clang), [CMake](https://cmake.org) 3.25
 or newer, [Ninja](https://ninja-build.org), [Conan](https://conan.io) 2.33, GNU Make 3.82 or newer,
 and Docker for the Linux artefacts (the `.deb` is built in the toolchain image) and the install
-smoke test. In one line: CMake describes the build, Ninja runs it, Conan fetches the three
-third-party libraries (CLI11, nlohmann_json, GoogleTest) at the versions pinned in `conan.lock`.
+smoke test. In one line: CMake describes the build, Ninja runs it, Conan fetches the third-party
+libraries (CLI11, nlohmann_json, opentelemetry-cpp with its OTLP/HTTP exporter, GoogleTest) at the
+versions pinned in `conan.lock`. The first dependency build compiles protobuf, OpenSSL and libcurl
+and takes some minutes; the Conan cache (and CI's cache of it) makes every later build quick.
 
 ```sh
 make test                      # Conan install, configure, build, unit + integration tests (default preset)
@@ -154,11 +166,11 @@ Three layers, all run by CI; `make test` runs the first two, `make smoke` the th
 
 | Layer | What runs | What it proves |
 | --- | --- | --- |
-| Unit (`tests/unit`, 49 tests) | `fileops::core` in-process with a `CollectingLogger` capturing every record | each operation's file-system behaviour, atomicity, error-to-exit-code mapping, **and** that the right log events with the right fields were emitted |
-| Integration (`tests/integration`, 37 tests) | the real `fileops` executable as a child process, with JSON logging on | argument parsing, exit codes, stdout/stderr discipline, log schema, and that logged facts (bytes, exit code, reason) match what actually happened |
+| Unit (`tests/unit`, 59 tests) | `fileops::core` in-process with a `CollectingLogger` capturing every record | each operation's file-system behaviour, atomicity, error-to-exit-code mapping, **and** that the right log events with the right fields were emitted |
+| Integration (`tests/integration`, 40 tests) | the real `fileops` executable as a child process, with JSON logging on | argument parsing, exit codes, stdout/stderr discipline, log schema, and that logged facts (bytes, exit code, reason) match what actually happened |
 | Package smoke (`scripts/smoke-test.sh`) | the installed `.deb` in pristine `debian:bookworm-slim` (12), `debian:trixie-slim` (13), `ubuntu:22.04`, `ubuntu:24.04` containers (CI; `make smoke` defaults to bookworm and 24.04, override with `SMOKE_IMAGES`) | it installs, runs, honours exit codes, logs, ships a man page, and removes cleanly |
 
-The 86 tests run under both compilers with sanitizers, and again in the release configuration
+The 99 tests run under both compilers with sanitizers, and again in the release configuration
 whose binary goes into the package — so the artefact that ships is the artefact that was tested.
 Every CLI invocation's log stream is captured to `cli-runs.ndjson`, summarised into the job summary,
 and uploaded; a red build can be diagnosed from that file without a re-run. The `diagnose` job in
@@ -232,9 +244,8 @@ Choices made on purpose for a single-maintainer tool with one requested target:
   on every supported distribution without a second libc toolchain;
 - no merge queue, reusable workflows, SLSA Build L3 builder or SBOM — each adds machinery without a
   consumer here; provenance attestations give Build L2 today;
-- no coverage gate, mutation testing or fuzzing — 86 deterministic tests under two sanitized
+- no coverage gate, mutation testing or fuzzing — 99 deterministic tests under two sanitized
   compilers on a tool that parses only its own arguments;
-- no OpenTelemetry export yet — logs first; traces and metrics are phase 2.
 
 ## Repository layout
 

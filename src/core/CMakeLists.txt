@@ -4,6 +4,7 @@
 add_library(fileops_core STATIC
   atomic_file.cpp
   log.cpp
+  observer.cpp
   operations.cpp)
 add_library(fileops::core ALIAS fileops_core)
 

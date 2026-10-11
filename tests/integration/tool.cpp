@@ -177,7 +177,7 @@ CliResult Tool::run(const std::filesystem::path& working_directory,
     std::vector<std::string> env_storage;
     for (char** entry = environ; *entry != nullptr; ++entry) {
         const std::string_view line{*entry};
-        if (line.starts_with("FILEOPS_LOG_") ||
+        if (line.starts_with("FILEOPS_LOG_") || line.starts_with("OTEL_") ||
             environment.contains(std::string{line.substr(0, line.find('='))})) {
             continue;
         }

@@ -43,8 +43,11 @@ Public headers live under `include/fileops/`; the library has no third-party dep
 - **`Error`** (`error.hpp`) is a `std::runtime_error` carrying an `ExitCode` and the path; its
   message is safe to print verbatim. The CLI never inspects exception types beyond this one.
 - **`telemetry/`** holds the contract: `log_events.hpp` (ids and names), `log.hpp` (`LogLevel`,
-  `LogRecord`, the abstract `Logger`, `NullLogger`). `src/core/log.hpp/.cpp` has one function per
-  event that builds the record with a fixed message template and field set. See
+  `LogRecord`, the abstract `Logger`, `NullLogger`) and `observer.hpp` (`OperationContext`,
+  `OperationOutcome`, the abstract `Observer`/`OperationScope`, `NullObserver`): the span and metric
+  facts, reported by `execute()` with no OpenTelemetry dependency in the core.
+  `src/core/log.hpp/.cpp` has one function per event that builds the record with a fixed message
+  template and field set. See
   [OBSERVABILITY.md](OBSERVABILITY.md).
 
 ## src/cli
@@ -59,15 +62,22 @@ Public headers live under `include/fileops/`; the library has no third-party dep
   `JsonSink` (one `nlohmann::ordered_json` object per line) over `std::ostream`; `make_sink` returns
   a `NullLogger` when the level is `None`. Both write to `std::cerr` synchronously, so records
   always precede the summary line.
-- **`run()`** executes the chosen action and maps the outcome: `Error` → its exit code and message,
-  any other exception → 70.
+- **`otel.cpp`** (library `fileops::otel`, shared with the unit tests) implements the core's
+  `telemetry::Observer` with opentelemetry-cpp: one span `fileops.<operation>` with the documented
+  tags, the three instruments, and an OTLP log sink that forwards `LogRecord`s to the logs API.
+  `Runtime::start_if_configured` builds the SDK providers with OTLP/HTTP exporters only when
+  `OTEL_EXPORTER_OTLP_ENDPOINT` is set; the exporters read the other `OTEL_*` variables themselves.
+- **`run()`** starts the OpenTelemetry runtime if configured, tees the console sink and the OTLP
+  log sink (the latter at Information unless `--log-level` was given), executes the chosen action,
+  flushes and shuts the runtime down, and only then prints the summary line and maps the outcome:
+  `Error` → its exit code and message, any other exception → 70.
 
 ## Tests
 
 | Suite | Runs against | Proves |
 | --- | --- | --- |
-| `tests/unit` (47) | `libfileops_core` in-process with `CollectingLogger` | behaviour of each operation, atomicity, error mapping, and the log records emitted for every outcome |
-| `tests/integration` (37) | the real executable (`$<TARGET_FILE:fileops>` by default, any binary via `FILEOPS_BIN`), spawned with `fork`/`execve` and both pipes drained with `poll` | argument parsing, exit codes, stdout/stderr discipline, JSON log schema, and that logged facts match reality |
+| `tests/unit` (59) | `libfileops_core` in-process with `CollectingLogger` | behaviour of each operation, atomicity, error mapping, and the log records emitted for every outcome |
+| `tests/integration` (40) | the real executable (`$<TARGET_FILE:fileops>` by default, any binary via `FILEOPS_BIN`), spawned with `fork`/`execve` and both pipes drained with `poll` | argument parsing, exit codes, stdout/stderr discipline, JSON log schema, and that logged facts match reality |
 
 `tests/support/` has the shared harness: `TempDirectory` (`mkdtemp`, leftover temp-file detection),
 `CollectingLogger`, `FILEOPS_SKIP_IF_ROOT` for permission tests. `gtest_discover_tests` registers

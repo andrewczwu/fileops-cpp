@@ -14,6 +14,8 @@
 
 #include <gtest/gtest.h>
 
+#include "collecting_observer.hpp"
+
 namespace fileops::test {
 
 class CollectingLogger final : public telemetry::Logger {
@@ -73,10 +75,12 @@ T field(const telemetry::LogRecord& record, std::string_view name) {
     throw std::runtime_error("no field named " + std::string{name});
 }
 
-/// A FileOperations instance wired to a CollectingLogger. One per test, so assertions are exact.
+/// A FileOperations instance wired to a CollectingLogger and a CollectingObserver. One per test, so
+/// assertions are exact.
 struct ObservedOperations {
     CollectingLogger logger;
-    FileOperations sut{logger};
+    CollectingObserver observer;
+    FileOperations sut{logger, observer};
 };
 
 }  // namespace fileops::test

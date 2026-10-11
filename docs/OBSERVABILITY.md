@@ -10,14 +10,13 @@ consumer serves both.
 | Channel | Where | Enabled by |
 | --- | --- | --- |
 | Logs | stderr, text or NDJSON | `--log-level` / `FILEOPS_LOG_LEVEL` (default `None`), `--log-format` / `FILEOPS_LOG_FORMAT` (default `text`), `-v` for Information |
+| Logs, traces, metrics | OTLP/HTTP (protobuf) | `OTEL_EXPORTER_OTLP_ENDPOINT` (standard `OTEL_*` variables honoured); log records at Information and above by default while the console stays silent, `--log-level` governs every sink |
 | User-facing result | stderr, last line, `fileops: <message>` | always, on failure only |
 
 **stdout is never used** except by `--help` and `--version`, so the tool is safe in pipelines. A usage
 error prints one `fileops: <message>` line per error plus `fileops: run 'fileops --help' for usage` on
-stderr and nothing on stdout. Sinks write synchronously, so log records always precede the summary
-line and the process exit.
-
-Traces and metrics are not implemented in this version; see "Phase 2" below.
+stderr and nothing on stdout. Sinks write synchronously and the OTLP exporters are flushed before
+the summary line is written, so telemetry always precedes the summary line and the process exit.
 
 ## Log events
 
@@ -64,33 +63,63 @@ level tags `trce dbug info warn fail crit` and UTC times.
 ## How tests use this
 
 - **Unit tests** (`tests/unit`) run each operation through `FileOperations` with a
-  `CollectingLogger` (`tests/support/collecting_logger.hpp`) attached and assert on the captured
-  records — ids, levels, order, fields — alongside the file-system outcome. `ObservedOperations`
-  is the harness; `field<T>(record, name)` reads a typed field.
+  `CollectingLogger` and a `CollectingObserver` (`tests/support/`) attached and assert on the
+  captured records — ids, levels, order, fields — and on the span/metric facts (context, exit code,
+  bytes, duration, error type) alongside the file-system outcome. `ObservedOperations` is the
+  harness; `field<T>(record, name)` reads a typed field. `otel_mapping_test.cpp` drives the real
+  OpenTelemetry mapping with in-memory span and metric exporters and checks names, tags, status and
+  instruments against the tables above.
 - **Integration tests** (`tests/integration`) launch the real executable through the `Tool` harness
   with `FILEOPS_LOG_FORMAT=json` and `FILEOPS_LOG_LEVEL=Debug`, parse stderr line by line, and check
   that the logged exit code, byte counts and event sequence match what the process actually returned
   and wrote. With `FILEOPS_TEST_LOG_DIR` set, every invocation is appended to `cli-runs.ndjson` as a
   header `{"run":{"args":[...],"exitCode":N,"binary":"..."}}` followed by its records.
+  `otlp_export_test.cpp` starts an in-process OTLP/HTTP receiver, points the binary at it and
+  checks that spans, metrics and log records arrive as protobuf, that the default export level is
+  Information, and that `--log-level None` silences the export too.
 - **CI** sets `FILEOPS_TEST_LOG_DIR=artifacts/logs/<preset>` (Makefile `test` target), renders the
   file into the job summary (`scripts/telemetry-summary.sh`) and uploads it as an artefact. On
   failure, the optional `diagnose` job hands the same files to an AI assistant with the event-id
   table above, so the first read of a red build already names the failing event and the likely cause.
 
-## Phase 2: traces and metrics (not yet implemented)
+## Traces
 
-The core library logs through an abstract `telemetry::Logger`, and `FileOperations::execute()` is
-the single place where an operation starts, ends and is timed. The planned second phase adds
-`opentelemetry-cpp` behind that seam without changing the log contract:
+One span per operation from a tracer named `fileops` (instrumentation scope version = the tool
+version), named `fileops.<operation>`. The core reports the facts through `telemetry::Observer`
+(`include/fileops/telemetry/observer.hpp`); `src/cli/otel.cpp` turns them into the span.
 
-- one span per operation from a tracer named `fileops`, called `fileops.<operation>`, with tags
-  `fileops.operation`, `file.path`, `file.source` / `file.source2` / `file.destination`, `file.size`,
-  `fileops.overwrite`, `fileops.exit_code` and `error.type`; status `Ok` on success, `Error` with
-  the user-facing message on failure;
-- three instruments on a meter named `fileops`: `fileops.operations` (counter), `fileops.operation.duration`
-  (histogram, seconds) and `fileops.bytes` (counter), tagged by `operation` and `outcome`;
-- export over OTLP when `OTEL_EXPORTER_OTLP_ENDPOINT` is set, with log records at Information and
-  above forwarded to the same endpoint while the console stays silent unless `--log-level` says otherwise;
-- unit tests capturing spans and measurements in memory, mirroring what the C# tool's tests do today.
+| Tag | Meaning |
+| --- | --- |
+| `fileops.operation` | `create` / `copy` / `combine` / `delete` |
+| `file.path` | the file produced or removed |
+| `file.source`, `file.source2`, `file.destination` | inputs and output for copy/combine |
+| `file.size` | bytes written or removed |
+| `fileops.overwrite` | whether `--force` was given (create, copy, combine) |
+| `fileops.exit_code` | numeric exit code (0 on success) |
+| `error.type` | `fileops::Error`, `std::filesystem::filesystem_error` or `std::exception` on failure |
 
-Until then, `OTEL_*` variables are ignored.
+Status is `Ok` on success, `Error` with the user-facing message as description on failure. The span
+is the active one while the operation runs, so exported log records carry its trace and span ids.
+
+## Metrics
+
+Meter `fileops`:
+
+| Instrument | Type | Unit | Tags |
+| --- | --- | --- | --- |
+| `fileops.operations` | counter | `{operation}` | `operation`, `outcome` (`success` or the lower-case exit code name, e.g. `notfound`) |
+| `fileops.operation.duration` | histogram | `s` | same |
+| `fileops.bytes` | counter | `By` | same; only recorded when bytes > 0 |
+
+## Shipping telemetry somewhere
+
+```sh
+docker run -d -p 4318:4318 otel/opentelemetry-collector     # or any OTLP/HTTP endpoint
+OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 fileops copy a b
+```
+
+Only OTLP over HTTP/protobuf is built in (`/v1/traces`, `/v1/metrics`, `/v1/logs` under the
+endpoint); `OTEL_EXPORTER_OTLP_HEADERS`, `OTEL_EXPORTER_OTLP_TIMEOUT`, `OTEL_RESOURCE_ATTRIBUTES` and
+`OTEL_SERVICE_NAME` are read by the SDK. Resource attributes: `service.name=fileops`,
+`service.version=<version>`. An unreachable endpoint costs one timeout (10 s by default) and never
+changes the exit code.

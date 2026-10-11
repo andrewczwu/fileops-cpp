@@ -12,9 +12,12 @@
 #include <iostream>
 #include <optional>
 #include <string>
+#include <utility>
+#include <vector>
 
 #include <CLI/CLI.hpp>
 
+#include "otel.hpp"
 #include "sinks.hpp"
 
 #ifndef FILEOPS_VERSION_STRING
@@ -40,6 +43,8 @@ struct GlobalOptions {
     std::string log_level = "None";
     std::string log_format = "text";
     bool verbose = false;
+    /// Whether --log-level (or FILEOPS_LOG_LEVEL) was given at all; it then governs every sink.
+    bool log_level_given = false;
 
     [[nodiscard]] LogLevel minimum_level() const {
         LogLevel level = fileops::telemetry::parse_log_level(log_level).value_or(LogLevel::None);
@@ -49,6 +54,12 @@ struct GlobalOptions {
         return level;
     }
 
+    /// Level for the OTLP export: whatever was asked for, or Information when nothing was, so an
+    /// endpoint receives useful records while the console stays silent.
+    [[nodiscard]] LogLevel export_level() const {
+        return (log_level_given || verbose) ? minimum_level() : LogLevel::Information;
+    }
+
     [[nodiscard]] fileops::cli::LogFormat format() const {
         return lower(log_format) == "json" ? fileops::cli::LogFormat::Json : fileops::cli::LogFormat::Text;
     }
@@ -56,21 +67,40 @@ struct GlobalOptions {
 
 using Action = std::function<Result(FileOperations&)>;
 
-/// Runs the chosen operation: log records first (the sink writes synchronously), then on failure one
-/// `fileops: <message>` line on stderr, then the exit code.
+/// Runs the chosen operation: log records first (the sinks write synchronously), telemetry is
+/// flushed, then on failure one `fileops: <message>` line on stderr, then the exit code.
 int run(const GlobalOptions& options, const Action& action) {
-    auto sink = fileops::cli::make_sink(options.format(), options.minimum_level(), std::cerr);
-    FileOperations operations(*sink);
+    // With OTEL_EXPORTER_OTLP_ENDPOINT set, spans, metrics and log records go out over OTLP/HTTP.
+    auto runtime = fileops::cli::otel::Runtime::start_if_configured(FILEOPS_VERSION_STRING);
+
+    std::vector<std::unique_ptr<fileops::telemetry::Logger>> sinks;
+    sinks.push_back(fileops::cli::make_sink(options.format(), options.minimum_level(), std::cerr));
+    if (runtime) {
+        sinks.push_back(runtime->log_sink(options.export_level()));
+    }
+    auto logger = fileops::cli::make_tee(std::move(sinks));
+    FileOperations operations(*logger, runtime ? runtime->observer() : fileops::telemetry::null_observer());
+
+    int code = fileops::to_int(ExitCode::Success);
+    std::string message;
     try {
         action(operations);
-        return fileops::to_int(ExitCode::Success);
     } catch (const fileops::Error& e) {
-        std::cerr << "fileops: " << e.what() << '\n';
-        return fileops::to_int(e.code());
+        code = fileops::to_int(e.code());
+        message = e.what();
     } catch (const std::exception& e) {
-        std::cerr << "fileops: unexpected error: " << e.what() << '\n';
-        return fileops::to_int(ExitCode::InternalError);
+        code = fileops::to_int(ExitCode::InternalError);
+        message = std::string{"unexpected error: "} + e.what();
     }
+
+    // Everything is exported before the summary line so the records always come first.
+    if (runtime) {
+        runtime->shutdown();
+    }
+    if (!message.empty()) {
+        std::cerr << "fileops: " << message << '\n';
+    }
+    return code;
 }
 
 }  // namespace
@@ -97,6 +127,8 @@ int run_main(int argc, char** argv) {
         ->default_str("text")
         ->check(CLI::IsMember({"text", "json"}, CLI::ignore_case));
     app.add_flag("-v,--verbose", options.verbose, "Shorthand for --log-level Information");
+    app.footer(
+        "Set OTEL_EXPORTER_OTLP_ENDPOINT to export a span, metrics and log records per run over OTLP/HTTP.");
 
     Action action;
 
@@ -158,6 +190,7 @@ int run_main(int argc, char** argv) {
 
     try {
         app.parse(argc, argv);
+        options.log_level_given = app.count("--log-level") > 0;
     } catch (const CLI::Success& e) {
         return app.exit(e);  // --help and --version: text on stdout, exit 0
     } catch (const CLI::ParseError& e) {

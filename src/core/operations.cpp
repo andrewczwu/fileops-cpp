@@ -135,7 +135,7 @@ Error translate(const std::filesystem::filesystem_error& e, const std::filesyste
 Result FileOperations::create(const std::filesystem::path& path,
                               std::optional<std::string_view> text,
                               bool overwrite) {
-    return execute(Operation::Create, path, [&] {
+    return execute({.operation = Operation::Create, .path = path, .overwrite = overwrite}, [&] {
         require_path(path, "path");
         reject_directory(path);
 
@@ -153,53 +153,65 @@ Result FileOperations::create(const std::filesystem::path& path,
 Result FileOperations::copy(const std::filesystem::path& source,
                             const std::filesystem::path& destination,
                             bool overwrite) {
-    return execute(Operation::Copy, destination, [&] {
-        require_path(source, "source");
-        require_path(destination, "destination");
-        require_file(source);
-        reject_directory(destination);
-        if (same_file(source, destination)) {
-            throw Error(ExitCode::UsageError,
-                        std::format("source and destination are the same file: {}", source.string()),
-                        source);
-        }
+    return execute(
+        {.operation = Operation::Copy,
+         .path = destination,
+         .source = source,
+         .destination = destination,
+         .overwrite = overwrite},
+        [&] {
+            require_path(source, "source");
+            require_path(destination, "destination");
+            require_file(source);
+            reject_directory(destination);
+            if (same_file(source, destination)) {
+                throw Error(ExitCode::UsageError,
+                            std::format("source and destination are the same file: {}", source.string()),
+                            source);
+            }
 
-        // The temp file is created with the source's permission bits, so the copy is never readable
-        // more widely than the original, not even for the instant before the rename.
-        const ReadFile input(source);
-        const mode_t mode = input.permission_bits();
-        const std::uint64_t bytes =
-            atomic_file::write(destination, overwrite, [&](int fd) { input.stream_to(fd); }, mode);
+            // The temp file is created with the source's permission bits, so the copy is never readable
+            // more widely than the original, not even for the instant before the rename.
+            const ReadFile input(source);
+            const mode_t mode = input.permission_bits();
+            const std::uint64_t bytes =
+                atomic_file::write(destination, overwrite, [&](int fd) { input.stream_to(fd); }, mode);
 
-        core_log::file_copied(logger_, source, destination, bytes);
-        return Result{Operation::Copy, destination, bytes};
-    });
+            core_log::file_copied(logger_, source, destination, bytes);
+            return Result{Operation::Copy, destination, bytes};
+        });
 }
 
 Result FileOperations::combine(const std::filesystem::path& first,
                                const std::filesystem::path& second,
                                const std::filesystem::path& output,
                                bool overwrite) {
-    return execute(Operation::Combine, output, [&] {
-        require_path(first, "first");
-        require_path(second, "second");
-        require_path(output, "output");
-        require_file(first);
-        require_file(second);
-        reject_directory(output);
+    return execute({.operation = Operation::Combine,
+                    .path = output,
+                    .source = first,
+                    .source2 = second,
+                    .destination = output,
+                    .overwrite = overwrite},
+                   [&] {
+                       require_path(first, "first");
+                       require_path(second, "second");
+                       require_path(output, "output");
+                       require_file(first);
+                       require_file(second);
+                       reject_directory(output);
 
-        const std::uint64_t bytes = atomic_file::write(output, overwrite, [&](int fd) {
-            ReadFile(first).stream_to(fd);
-            ReadFile(second).stream_to(fd);
-        });
+                       const std::uint64_t bytes = atomic_file::write(output, overwrite, [&](int fd) {
+                           ReadFile(first).stream_to(fd);
+                           ReadFile(second).stream_to(fd);
+                       });
 
-        core_log::files_combined(logger_, first, second, output, bytes);
-        return Result{Operation::Combine, output, bytes};
-    });
+                       core_log::files_combined(logger_, first, second, output, bytes);
+                       return Result{Operation::Combine, output, bytes};
+                   });
 }
 
 Result FileOperations::remove(const std::filesystem::path& path, bool ignore_missing) {
-    return execute(Operation::Delete, path, [&] {
+    return execute({.operation = Operation::Delete, .path = path}, [&] {
         require_path(path, "path");
         // The link itself is what gets removed, so look at it rather than through it: a symlink to a
         // directory is deletable, and a dangling symlink exists.
@@ -229,33 +241,50 @@ Result FileOperations::remove(const std::filesystem::path& path, bool ignore_mis
     });
 }
 
-/// Runs `body` with timing and lifecycle logs, and maps raw file-system failures to Error with the
-/// right exit code.
-Result FileOperations::execute(Operation operation,
-                               const std::filesystem::path& path,
+/// Runs `body` with timing, lifecycle logs and the observer scope, and maps raw file-system failures
+/// to Error with the right exit code.
+Result FileOperations::execute(const telemetry::OperationContext& context,
                                const std::function<Result()>& body) {
+    const Operation operation = context.operation;
+    const std::filesystem::path& path = context.path;
     core_log::operation_started(logger_, operation, path);
+    const auto scope = observer_.start(context);
     const auto start = std::chrono::steady_clock::now();
-    const auto elapsed_ms = [&] {
-        return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
+    const auto elapsed = [&] {
+        return std::chrono::duration<double>(std::chrono::steady_clock::now() - start);
+    };
+
+    const auto fail = [&](const Error& error, std::string_view error_type) {
+        core_log::operation_failed(logger_, operation, path, error.code(), error.what());
+        scope->finish({.exit_code = error.code(),
+                       .bytes = 0,
+                       .duration = elapsed(),
+                       .error_type = std::string{error_type},
+                       .error_message = error.what()});
     };
 
     try {
         Result result = body();
-        core_log::operation_completed(logger_, operation, path, result.bytes, elapsed_ms());
+        const auto duration = elapsed();
+        core_log::operation_completed(logger_,
+                                      operation,
+                                      path,
+                                      result.bytes,
+                                      std::chrono::duration<double, std::milli>(duration).count());
+        scope->finish({.exit_code = ExitCode::Success, .bytes = result.bytes, .duration = duration});
         return result;
     } catch (const Error& e) {
-        core_log::operation_failed(logger_, operation, path, e.code(), e.what());
+        fail(e, "fileops::Error");
         throw;
     } catch (const std::filesystem::filesystem_error& e) {
         const Error translated = translate(e, path);
-        core_log::operation_failed(logger_, operation, path, translated.code(), translated.what());
+        fail(translated, "std::filesystem::filesystem_error");
         throw Error(translated);
     } catch (const std::exception& e) {
         const Error internal(ExitCode::InternalError,
                              std::format("unexpected error on {}: {}", path.string(), e.what()),
                              path);
-        core_log::operation_failed(logger_, operation, path, internal.code(), internal.what());
+        fail(internal, "std::exception");
         throw Error(internal);
     }
 }

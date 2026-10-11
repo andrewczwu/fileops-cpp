@@ -120,14 +120,16 @@ executable and against the installed package.
 ## 6. Observability requirements
 
 Telemetry is a documented contract ([docs/OBSERVABILITY.md](OBSERVABILITY.md)), not a by-product.
-This version implements logs; traces and metrics are phase 2 (section 10).
 
 | Requirement | Detail |
 | --- | --- |
 | Structured logs | Every operation emits start, complete or fail records with stable event ids (1xxx lifecycle, 2xxx create, 3xxx copy, 4xxx combine, 5xxx delete) and event names, with named fields (paths, bytes, duration, exit code, reason). |
 | Formats | Human-readable text (UTC times) or one JSON object per line (`--log-format json`), always on stderr. Off by default; enabled by flag or `FILEOPS_LOG_LEVEL` / `FILEOPS_LOG_FORMAT`. |
 | Schema stability | The JSON record shape `{Timestamp, EventId, EventName, LogLevel, Category, Message, State}` and the event ids are identical to the C# tool's, so one log consumer serves both. |
-| Flush guarantee | Sinks write synchronously; all records precede the summary line and the process exit. |
+| Traces | One span per operation (`fileops.<operation>`) with path, size, overwrite and exit-code tags; status `Error` with the user-facing message on failure. |
+| Metrics | Operation counter, duration histogram and bytes counter, tagged by operation and outcome. |
+| Export | When `OTEL_EXPORTER_OTLP_ENDPOINT` is set, traces, metrics and logs are exported over OTLP/HTTP; standard `OTEL_*` variables are honoured. Without `--log-level` the exporter receives Information and above while the console stays silent; `--log-level` governs every sink. |
+| Flush guarantee | Sinks write synchronously and the exporters are flushed before the summary line; all telemetry precedes the summary line and the process exit. |
 | Evidence | A logged failure's exit code equals the process exit code; a logged byte count equals what is on disk. Tests assert this. |
 | Host independence | The core library depends only on an abstract `Logger` interface; sinks live in the CLI and the tests. |
 
@@ -174,8 +176,7 @@ check that fails the build if it stops holding:
 
 | Item | Position |
 | --- | --- |
-| Traces and metrics (phase 2) | Add `opentelemetry-cpp` behind the existing `Logger` seam: one span per operation (`fileops.<operation>`) with the same tags, and the operations counter, duration histogram and bytes counter the C# tool exports, enabled by `OTEL_EXPORTER_OTLP_ENDPOINT`. |
 | arm64 package | Not requested. Needs a cross toolchain or a second builder; add when a consumer needs it. |
 | Reproducible builds verified by double build | Inputs are pinned and timestamps fixed; a CI job that builds a tag twice and compares hashes would turn the intent into a proven property. |
-| Conan vulnerability auditing | No Dependabot or audit for Conan; dependencies are header-only/test-only and bumped by hand. Revisit if a networked or parsing dependency is added. |
+| Conan vulnerability auditing | No Dependabot or audit for Conan; dependencies are pinned and bumped by hand. With opentelemetry-cpp, libcurl and OpenSSL in the graph this is now the most valuable gap to close (a scheduled `conan audit` job or an SBOM scan). |
 | AI-assisted failure diagnosis | Implemented as an opt-in job; dormant until a repository secret is provided. |

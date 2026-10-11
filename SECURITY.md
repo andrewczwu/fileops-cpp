@@ -12,10 +12,10 @@ rather than a public issue. You will get an acknowledgement within a few days.
   full history on every push and pull request, and GitHub push protection is enabled.
 - **Supply chain.** Every third-party GitHub Action is pinned to a commit SHA and updated by
   Dependabot after a seven-day cooldown; so is the toolchain image's base. The three C++
-  dependencies (CLI11, nlohmann_json, GoogleTest) are pinned in `conanfile.py`, their resolved
+  dependencies (CLI11, nlohmann_json, opentelemetry-cpp, GoogleTest) are pinned in `conanfile.py`, their resolved
   revisions are locked in `conan.lock`, and every CI build resolves with `--lockfile`, so the graph
   that was tested is the one that ships. Conan has no automated vulnerability audit comparable to
-  `NuGetAudit`; the mitigation is that all three packages are header-only or test-only, pinned, and
+  `NuGetAudit`; the mitigation is that every package is pinned, resolved strictly from the lockfile and
   bumped deliberately (see CONTRIBUTING.md). Workflows run with `permissions: contents: read` and
   escalate per job only where needed.
 - **Code-level defences.** Every Debug build in CI runs the whole test suite under AddressSanitizer
