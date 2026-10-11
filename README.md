@@ -8,11 +8,9 @@ A command-line tool that creates, copies, combines and deletes files — with at
 safe-by-default overwrite handling, stable exit codes, and built-in structured logging that the
 test suite and CI treat as evidence.
 
-This is the C++20 / CMake / Conan implementation of the same tool as
-[andrewczwu/fileops](https://github.com/andrewczwu/fileops) (C#). The two share an identical
-command-line contract, exit codes and JSON log schema; the point of this repository is to show
-the same delivery discipline applied to a native C++ toolchain. Ships as a single, fully static
-Linux executable with no run-time dependencies, packaged as a `.deb`.
+Built with C++20, CMake and Conan; the point of this repository is to show disciplined delivery
+applied to a native C++ toolchain. Ships as a single, fully static Linux executable with no
+run-time dependencies, packaged as a `.deb`.
 
 ```text
 $ fileops create notes.txt --text "hello"
@@ -114,8 +112,7 @@ Each JSON record is one line with the fields `Timestamp` (ISO 8601, UTC), `Event
 Every operation also produces one OpenTelemetry span and three metrics. Set
 `OTEL_EXPORTER_OTLP_ENDPOINT` and they are exported over OTLP/HTTP, together with log records:
 Information and above by default (the console stays silent), or whatever `--log-level` says, which
-governs every sink. Span tags and instruments are the same as the C# tool's and are part of the
-documented contract.
+governs every sink. Span tags and instruments are part of the documented contract.
 
 ```sh
 docker run -d -p 4318:4318 otel/opentelemetry-collector

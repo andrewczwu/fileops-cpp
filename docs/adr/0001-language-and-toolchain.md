@@ -6,9 +6,8 @@
 
 The deliverable is a small file tool that must ship as a single portable executable installable on
 Debian, with the evaluation focused on CI/CD practice, version control and implementation quality.
-A C# implementation ([andrewczwu/fileops](https://github.com/andrewczwu/fileops)) already exists;
-this repository builds the same product with the toolchain the role itself uses — C++ and CMake —
-so the pipeline practices are demonstrated where they are hardest: compiler pinning, dependency
+This repository builds it with the toolchain the role itself uses — C++ and CMake — so the
+pipeline practices are demonstrated where they are hardest: compiler pinning, dependency
 management without a central registry, memory safety, and a binary that must run on older glibc.
 
 ## Decision

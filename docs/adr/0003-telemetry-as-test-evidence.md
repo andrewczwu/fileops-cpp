@@ -11,7 +11,7 @@ logging". Both are expensive in a pipeline whose job is developer velocity.
 ## Decision
 
 - Every operation emits a fixed set of structured log events with stable ids and names, documented
-  in `docs/OBSERVABILITY.md`, identical to the C# tool's so the schema is shared.
+  in `docs/OBSERVABILITY.md`.
 - The core library logs only through an abstract `telemetry::Logger` (`enabled(level)`, `log(record)`);
   sinks live outside it: `TextSink` and `JsonSink` in the CLI, `CollectingLogger` in the tests.
 - Unit tests capture records with `CollectingLogger` and assert on ids, levels, order and typed
@@ -34,8 +34,8 @@ logging". Both are expensive in a pipeline whose job is developer velocity.
 
 ## Consequences
 
-- Changing a message template, event id or field name is a breaking change for tests (and for the
-  C# tool's consumers) and must be deliberate.
+- Changing a message template, event id or field name is a breaking change for tests and log
+  consumers and must be deliberate.
 - Logging must never touch stdout; both sinks are constructed over `std::cerr` and the integration
   tests check stdout is empty on every path.
 - Spans and metrics follow the same pattern: the core reports facts through `telemetry::Observer`,
